@@ -4,21 +4,7 @@ import plyvel
 from plyvel import DB
 from pathlib import Path
 
-world_db_names = ["actors",
-                  "cards",
-                  "combats",
-                  "drawings",
-                  "fog",
-                  "folders",
-                  "items",
-                  "journal",
-                  "macros",
-                  "messages",
-                  "playlists",
-                  "scenes",
-                  "settings",
-                  "tables",
-                  "users"]
+from fvttpacker import world_db_names
 
 
 class Unpacker:
