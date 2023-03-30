@@ -1,0 +1,6 @@
+/venv
+__pycache__
+/test/out
+/test/leveldb_files
+/build
+/dist
