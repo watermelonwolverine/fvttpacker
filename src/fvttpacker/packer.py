@@ -5,7 +5,7 @@ import plyvel
 from plyvel import DB
 from pathlib import Path
 
-from fvttpacker import world_db_names
+from fvttpacker.__constants import world_db_names, UTF_8
 
 
 class Packer:
@@ -83,10 +83,10 @@ class Packer:
                               db: DB) -> None:
 
         for path_to_file in input_dir.glob("*.json"):
-            with open(path_to_file, "rt", encoding="UTF-8") as file:
+            with open(path_to_file, "rt", encoding=UTF_8) as file:
                 json_dict = json.load(file)
 
             # remove .json at the end
             key: str = path_to_file.name[0:-5]
 
-            db.put(key.encode("UTF-8"), json.dumps(json_dict).encode("UTF-8"))
+            db.put(key.encode(UTF_8), json.dumps(json_dict).encode(UTF_8))

@@ -4,7 +4,7 @@ import plyvel
 from plyvel import DB
 from pathlib import Path
 
-from fvttpacker import world_db_names
+from fvttpacker.__constants import world_db_names, UTF_8
 
 
 class Unpacker:
@@ -74,11 +74,11 @@ class Unpacker:
             key: bytes = entry[0]
             value: bytes = entry[1]
 
-            json_dict = json.loads(value.decode("UTF-8"))
+            json_dict = json.loads(value.decode(UTF_8))
 
-            target_file = target_dir.joinpath(key.decode("UTF-8") + ".json")
+            target_file = target_dir.joinpath(key.decode(UTF_8) + ".json")
 
-            with open(target_file, "wt+", encoding="UTF-8") as file:
+            with open(target_file, "wt+", encoding=UTF_8) as file:
                 json.dump(json_dict,
                           file,
                           indent="  ")

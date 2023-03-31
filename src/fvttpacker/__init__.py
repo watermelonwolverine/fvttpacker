@@ -1,15 +1,2 @@
-world_db_names = ["actors",
-                  "cards",
-                  "combats",
-                  "drawings",
-                  "fog",
-                  "folders",
-                  "items",
-                  "journal",
-                  "macros",
-                  "messages",
-                  "playlists",
-                  "scenes",
-                  "settings",
-                  "tables",
-                  "users"]
+__version__ = "0.1.2"
+
