@@ -11,5 +11,5 @@ logging.getLogger().setLevel(logging.DEBUG)
 
 packer = Packer(override_confirmer=InteractiveOverrideConfirmer())
 
-packer.pack_world_into_dbs_at(input_dir,
-                              target_dir)
+packer.pack_world_into_dbs_under(input_dir,
+                                 target_dir)

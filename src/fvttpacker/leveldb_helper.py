@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Union, List
+from typing import Union
 
 import plyvel
 
 from fvttpacker.fvttpacker_exception import FvttPackerException
 
 
-class LevelDBTools:
+class LevelDBHelper:
 
     @staticmethod
     def try_open_db(path_to_target_db: Path) -> Union[plyvel.DB, None]:
@@ -26,7 +26,7 @@ class LevelDBTools:
                 raise FvttPackerException(f"Path '{path_to_target_db}' already but not as a directory.")
 
             # Path exists as directory and can be opened as leveldb
-            if LevelDBTools.test_open_as_leveldb(path_to_target_db):
+            if LevelDBHelper.test_open_as_leveldb(path_to_target_db):
                 create_if_missing = False
             # Can't handle folders that are not levelDBs
             else:
@@ -45,7 +45,7 @@ class LevelDBTools:
     @staticmethod
     def test_open_as_leveldb(path_to_db: Path):
 
-        if not LevelDBTools.__check_for_necessary_files(path_to_db):
+        if not LevelDBHelper.__check_for_necessary_files(path_to_db):
             return False
 
         try:
@@ -58,18 +58,18 @@ class LevelDBTools:
     @staticmethod
     def __check_for_necessary_files(path_to_db: Path) -> bool:
         """
-        Checks for LOCK, LOG and CURRENT files in the given directory (`path_to_db`).
+        Checks if the given directory (`path_to_db`) is empty or if it contains  LOCK, LOG and CURRENT files.
         Reason: We don't want to open any arbitrary folder as LevelDB.
         1. It would put a LOCK and a LOG file everywhere
         2. Probably shouldn't write LevelDBs into arbitrary folders?.
-        :return: True if the folder contains LOCK, LOG and CURRENT files
+        :return: True if the folder contains LOCK, LOG and CURRENT files or if it is empty
         """
 
         # empty directories are ok
-        if len(path_to_db.glob("*")) == 0:
-            return True
+        children = list(path_to_db.glob("*"))
 
-        children = path_to_db.glob("*")
+        if len(children) == 0:
+            return True
 
         LOCK_found = False
         LOG_found = False

@@ -1,14 +1,14 @@
 import json
 import logging
 from pathlib import Path
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Iterable
 
 import plyvel
 from plyvel import DB
 
 from fvttpacker.__constants import world_db_names, UTF_8
 from fvttpacker.fvttpacker_exception import FvttPackerException
-from fvttpacker.leveldb_tools import LevelDBTools
+from fvttpacker.leveldb_helper import LevelDBHelper
 from fvttpacker.override_confirmer import OverrideConfirmer, AllYesOverrideConfirmer
 from fvttpacker.packer.packer_assert_helper import PackerAssertHelper
 
@@ -20,11 +20,11 @@ class Packer:
                  override_confirmer: OverrideConfirmer = AllYesOverrideConfirmer()):
 
         self.override_confirmer = override_confirmer
-        self.leveldb_tools = LevelDBTools()
+        self.leveldb_tools = LevelDBHelper()
 
-    def pack_world_into_dbs_at(self,
-                               path_to_parent_input_dir: Path,
-                               path_to_parent_target_dir: Path) -> None:
+    def pack_world_into_dbs_under(self,
+                                  path_to_parent_input_dir: Path,
+                                  path_to_parent_target_dir: Path) -> None:
         """
         Similar to `pack_subdirs_into_dbs_at`, but only packs the sub-folders under the given directory (`parent_input_dir`)
         that belong to a world.
@@ -88,18 +88,43 @@ class Packer:
         """
 
         path_to_input_dir: Path
+        path_to_target_db: Path
 
         # check input dir paths
         if not skip_input_checks:
-
-            for path_to_input_dir in input_dir_paths_to_target_db_paths.keys():
-                self.assert_helper.assert_path_to_input_dir_is_ok(path_to_input_dir)
+            self.assert_helper.assert_paths_to_input_dirs_are_ok(input_dir_paths_to_target_db_paths.keys())
 
         # check target db paths
         if not skip_target_checks:
-            for path_to_target_db in input_dir_paths_to_target_db_paths.values():
-                self.assert_helper.assert_path_to_target_db_is_ok(path_to_target_db,
-                                                                  must_exist=False)
+            self.assert_helper.assert_paths_to_target_dbs_are_ok(input_dir_paths_to_target_db_paths.values())
+
+        # ask which existing dbs should be overriden and filter out the dbs that should not be overriden
+        input_dir_paths_to_target_db_paths = self.__ask_and_filter_out_non_override(input_dir_paths_to_target_db_paths)
+
+        # read all input directories -> fail fast
+        input_dir_paths_to_dicts = self.__read_dirs_as_dicts(input_dir_paths_to_target_db_paths.keys())
+
+        input_dir_paths_to_dbs: Dict[Path, DB] = dict()
+
+        # open all the dbs -> fail fast
+        for (path_to_input_dir, path_to_target_db) in input_dir_paths_to_target_db_paths.items():
+            input_dir_paths_to_dbs[path_to_input_dir] = plyvel.DB(path_to_target_db)
+
+        # coming this far means:
+        # - all input directories could be read into dicts
+        # - all target dbs could be opened as LevelDBs
+        try:
+            # pack all the folders into
+            for (path_to_input_dir, target_db) in input_dir_paths_to_dbs.items():
+                self.pack_dict_into_db(input_dir_paths_to_dicts[path_to_input_dir],
+                                       target_db)
+        finally:
+            # close all the dbs
+            for target_db in input_dir_paths_to_dbs.values():
+                target_db.close()
+
+    def __ask_and_filter_out_non_override(self,
+                                          input_dir_paths_to_target_db_paths: Dict[Path, Path]) -> Dict[Path, Path]:
 
         # look for existing target dbs
         existing_target_dbs: List[Path] = list()
@@ -112,21 +137,35 @@ class Packer:
         if len(existing_target_dbs) > 0:
             override_answer = self.override_confirmer.confirm_batch_override_leveldb(existing_target_dbs)
 
+        # filter out the path to dbs that should not be overriden
+        result: Dict[Path, Path] = dict()
         for (path_to_input_dir, path_to_target_db) in input_dir_paths_to_target_db_paths.items():
 
-            # Don't override the excluded ones
+            # Don't copy over the ones which shouldn't be overriden
             if path_to_target_db in existing_target_dbs \
                     and override_answer[path_to_target_db] == False:
                 continue
 
-            self.pack_dir_into_db_at(path_to_input_dir,
-                                     path_to_target_db,
-                                     skip_checks=True)
+            result[path_to_input_dir] = path_to_target_db
+
+        return result
+
+    def __read_dirs_as_dicts(self,
+                             paths_to_input_dirs: Iterable[Path]) -> Dict[Path, Dict[str, str]]:
+
+        result: Dict[Path, Dict[str, str]] = dict()
+
+        for path_to_input_dir in paths_to_input_dirs:
+            result[path_to_input_dir] = self.read_dir_as_dict(path_to_input_dir,
+                                                              skip_checks=True)
+
+        return result
 
     def pack_dir_into_db_at(self,
                             path_to_input_dir: Path,
                             path_to_target_db: Path,
-                            skip_checks=False) -> None:
+                            skip_input_checks=False,
+                            skip_target_checks=False) -> None:
         """
         Packs the given directory (`input_dir`) into the leveldb at the given location (`path_to_target_db`).
         If the `path_to_target_db` does not point to an existing LevelDB a new one will be created.
@@ -137,29 +176,36 @@ class Packer:
         :param path_to_input_dir: e.g. "./unpacked_dbs/actors"
         :param path_to_target_db: e.g. "./foundrydata/Data/worlds/test/data/actors"
         """
-        if not skip_checks:
+        if not skip_input_checks:
             self.assert_helper.assert_path_to_input_dir_is_ok(path_to_input_dir)
+        if not skip_target_checks:
             self.assert_helper.assert_path_to_target_db_is_ok(path_to_target_db)
 
         db = self.leveldb_tools.try_open_db(path_to_target_db)
 
         self.pack_dir_into_db(path_to_input_dir,
-                              db)
+                              db,
+                              skip_input_checks=True)
 
         db.close()
 
     def pack_dir_into_db(self,
-                         input_dir: Path,
-                         target_db: DB) -> None:
+                         path_to_input_dir: Path,
+                         target_db: DB,
+                         skip_input_checks=False) -> None:
         """
         Packs the given directory (`input_dir`) into the given LevelDB `target_db`
-        :param input_dir: The directory to pack
+        :param path_to_input_dir: The directory to pack
         :param target_db: The LevelDB to pack the `input_dir` into
         :return:
         """
 
+        if not skip_input_checks:
+            self.assert_helper.assert_path_to_input_dir_is_ok(path_to_input_dir)
+
         # read folder as a whole.
-        folder_dict = self.read_dir_as_dict(input_dir)
+        folder_dict = self.read_dir_as_dict(path_to_input_dir,
+                                            skip_checks=True)
 
         # avoid rewriting whole database everytime
         # instead only re-write updated entries
@@ -167,18 +213,23 @@ class Packer:
                                target_db)
 
     def read_dir_as_dict(self,
-                         input_dir: Path) -> Dict[str, str]:
+                         path_to_input_dir: Path,
+                         skip_checks=False) -> Dict[str, str]:
         # May not be the best use of memory, but it's nice to have everything in a dict
         """
-        Reads the given directory (`input_dir`) into memory.
+        Reads the given directory (`path_to_input_dir`) into memory.
         With filenames as keys and file contents as values.
 
-        :param input_dir: e.g. "./unpacked_data/actors"
+        :param path_to_input_dir: e.g. "./unpacked_data/actors"
         :return: dict with filenames as keys and file contents as values
         """
+
+        if not skip_checks:
+            self.assert_helper.assert_path_to_input_dir_is_ok(path_to_input_dir)
+
         result = dict()
 
-        for path_to_file in input_dir.glob("*.json"):
+        for path_to_file in path_to_input_dir.glob("*.json"):
             with open(path_to_file, "rt", encoding=UTF_8) as file:
                 json_dict = json.load(file)
 

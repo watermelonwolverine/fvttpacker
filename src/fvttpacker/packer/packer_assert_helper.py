@@ -1,7 +1,8 @@
 from pathlib import Path
+from typing import Iterable
 
 from fvttpacker.fvttpacker_exception import FvttPackerException
-from fvttpacker.leveldb_tools import LevelDBTools
+from fvttpacker.leveldb_helper import LevelDBHelper
 
 
 class PackerAssertHelper:
@@ -24,9 +25,19 @@ class PackerAssertHelper:
                                                path_to_parent_target_dir: Path):
         self.__assert_path_to_dir_is_ok(path_to_parent_target_dir)
 
+    def assert_paths_to_input_dirs_are_ok(self,
+                                          paths_to_input_dirs: Iterable[Path]):
+        for path_to_input_dir in paths_to_input_dirs:
+            self.assert_path_to_input_dir_is_ok(path_to_input_dir)
+
     def assert_path_to_input_dir_is_ok(self,
                                        path_to_input_dir: Path):
         self.__assert_path_to_dir_is_ok(path_to_input_dir)
+
+    def assert_paths_to_target_dbs_are_ok(self,
+                                          paths_to_target_dbs: Iterable[Path]):
+        for path_to_target_db in paths_to_target_dbs:
+            self.assert_path_to_target_db_is_ok(path_to_target_db)
 
     def assert_path_to_target_db_is_ok(self,
                                        path_to_target_db: Path,
@@ -42,5 +53,5 @@ class PackerAssertHelper:
 
         # TODO: write test-case
         # If path exists and is a directory it must be openable as LevelDB
-        if not LevelDBTools.test_open_as_leveldb(path_to_target_db):
+        if not LevelDBHelper.test_open_as_leveldb(path_to_target_db):
             raise FvttPackerException(f"Path '{path_to_target_db}' cannot be opened as LevelDB")
