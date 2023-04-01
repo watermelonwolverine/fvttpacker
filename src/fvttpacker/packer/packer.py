@@ -96,7 +96,8 @@ class Packer:
 
         # check target db paths
         if not skip_target_checks:
-            self.assert_helper.assert_paths_to_target_dbs_are_ok(input_dir_paths_to_target_db_paths.values())
+            self.assert_helper.assert_paths_to_target_dbs_are_ok(input_dir_paths_to_target_db_paths.values(),
+                                                                 False)
 
         # ask which existing dbs should be overriden and filter out the dbs that should not be overriden
         input_dir_paths_to_target_db_paths = self.__ask_and_filter_out_non_override(input_dir_paths_to_target_db_paths)
@@ -108,7 +109,7 @@ class Packer:
 
         # open all the dbs -> fail fast
         for (path_to_input_dir, path_to_target_db) in input_dir_paths_to_target_db_paths.items():
-            input_dir_paths_to_dbs[path_to_input_dir] = plyvel.DB(path_to_target_db)
+            input_dir_paths_to_dbs[path_to_input_dir] = LevelDBHelper.try_open_db(path_to_target_db)
 
         # coming this far means:
         # - all input directories could be read into dicts
@@ -179,7 +180,8 @@ class Packer:
         if not skip_input_checks:
             self.assert_helper.assert_path_to_input_dir_is_ok(path_to_input_dir)
         if not skip_target_checks:
-            self.assert_helper.assert_path_to_target_db_is_ok(path_to_target_db)
+            self.assert_helper.assert_path_to_target_db_is_ok(path_to_target_db,
+                                                              must_exist=False)
 
         db = self.leveldb_tools.try_open_db(path_to_target_db)
 

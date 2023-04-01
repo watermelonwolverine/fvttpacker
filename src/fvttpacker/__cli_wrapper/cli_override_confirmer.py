@@ -54,10 +54,10 @@ class InteractiveOverrideConfirmer(OverrideConfirmer):
         n: int = 1
         for target_db in target_dbs:
             question += f"{n}: {target_db}\n"
-            n+=1
+            n += 1
 
         question += "Press Enter if you want to override all," \
-                   "or enter the numbers of the entries you want to exclude from overriding:\n"
+                    " or enter the numbers of the entries you want to exclude from overriding:\n"
 
         # Ask question
         numbers = self.__user_interactor.ask_for_comma_separated_list_of_integers(question)
@@ -70,6 +70,6 @@ class InteractiveOverrideConfirmer(OverrideConfirmer):
                 result[target_db] = False
             else:
                 result[target_db] = True
-            n+=1
+            n += 1
 
         return result

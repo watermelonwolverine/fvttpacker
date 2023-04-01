@@ -35,13 +35,14 @@ class PackerAssertHelper:
         self.__assert_path_to_dir_is_ok(path_to_input_dir)
 
     def assert_paths_to_target_dbs_are_ok(self,
-                                          paths_to_target_dbs: Iterable[Path]):
+                                          paths_to_target_dbs: Iterable[Path],
+                                          must_exist):
         for path_to_target_db in paths_to_target_dbs:
-            self.assert_path_to_target_db_is_ok(path_to_target_db)
+            self.assert_path_to_target_db_is_ok(path_to_target_db, must_exist)
 
     def assert_path_to_target_db_is_ok(self,
                                        path_to_target_db: Path,
-                                       must_exist=True):
+                                       must_exist):
 
         # has to exist
         if must_exist and not path_to_target_db.exists():
@@ -53,5 +54,5 @@ class PackerAssertHelper:
 
         # TODO: write test-case
         # If path exists and is a directory it must be openable as LevelDB
-        if not LevelDBHelper.test_open_as_leveldb(path_to_target_db):
+        if path_to_target_db.exists() and not LevelDBHelper.test_open_as_leveldb(path_to_target_db):
             raise FvttPackerException(f"Path '{path_to_target_db}' cannot be opened as LevelDB")
