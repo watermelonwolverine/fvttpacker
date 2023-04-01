@@ -5,50 +5,36 @@ from typing import Union
 import plyvel
 
 from fvttpacker.fvttpacker_exception import FvttPackerException
+from fvttpacker.packer.packer_assert_helper import PackerAssertHelper
 
 
 class LevelDBHelper:
 
     @staticmethod
-    def try_open_db(path_to_target_db: Path) -> Union[plyvel.DB, None]:
+    def try_open_db(path_to_target_db: Path,
+                    skip_checks) -> Union[plyvel.DB, None]:
         """
         Tries to open the `target_db`
         If it exists it confirms overriding via the `override_confirmer` that was given to the constructor.
+
         :param path_to_target_db: Path to the db to open.
+        :param skip_checks:
+
         :return: The handle to the db.
-        :raise: FvttPackerException if the path can not be opened as LevelDB.
         """
-        create_if_missing: bool
 
-        logging.info("Trying to open db at '%s'",
-                     path_to_target_db)
+        logging.debug("Trying to open db at '%s'",
+                      path_to_target_db)
 
-        if path_to_target_db.exists():
-
-            logging.debug("Path %s exists",
-                          path_to_target_db)
-
-            # Can't handle files
-            if not path_to_target_db.is_dir():
-                raise FvttPackerException(f"Path '{path_to_target_db}' already but not as a directory.")
-
-            # Path exists as directory and can be opened as leveldb
-            if LevelDBHelper.test_open_as_leveldb(path_to_target_db):
-
-                logging.debug("Path '%s' can be opened as LevelDB",
-                              path_to_target_db)
-                create_if_missing = False
-            # Can't handle folders that are not levelDBs
-            else:
-                raise FvttPackerException(f"{path_to_target_db} already exists, but cannot be opened as LevelDB.")
-        else:
-            create_if_missing = True
+        if not skip_checks:
+            PackerAssertHelper.assert_path_to_target_db_is_ok(path_to_target_db,
+                                                              must_exist=False)
 
         try:
             # bool_create_if_missing is not working even though it is suggested
             # use create_if_missing instead
             return plyvel.DB(str(path_to_target_db),
-                             create_if_missing=create_if_missing)
+                             create_if_missing=True)
         except plyvel.Error as err:
             raise FvttPackerException(f"Unable to open {path_to_target_db} as leveldb.", err)
 
@@ -59,10 +45,17 @@ class LevelDBHelper:
             return False
 
         try:
+            logging.debug("Checking if '%s' can be opened as LevelDB",
+                          path_to_db)
             db = plyvel.DB(str(path_to_db))
             db.close()
+            logging.debug("'%s' can be opened as LevelDB",
+                          path_to_db)
             return True
-        except plyvel.Error:
+        except plyvel.Error as err:
+            logging.debug("'%s' can not opened as LevelDB, reason: %s",
+                          path_to_db,
+                          err)
             return False
 
     @staticmethod
@@ -84,19 +77,19 @@ class LevelDBHelper:
         if len(children) == 0:
             return True
 
-        LOCK_found = False
-        LOG_found = False
-        CURRENT_found = False
+        lock_found = False
+        log_found = False
+        current_found = False
 
         for child in children:
             if child.name == "LOCK":
-                LOCK_found = True
+                lock_found = True
                 logging.debug("Found LOCK")
             if child.name == "LOG":
-                LOG_found = True
+                log_found = True
                 logging.debug("Found LOG")
             if child.name == "CURRENT":
-                CURRENT_found = True
+                current_found = True
                 logging.debug("Found CURRENT")
 
-        return LOCK_found and LOG_found and CURRENT_found
+        return lock_found and log_found and current_found

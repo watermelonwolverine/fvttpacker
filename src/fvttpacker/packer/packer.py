@@ -1,5 +1,6 @@
 import json
 import logging
+from json import JSONDecodeError
 from pathlib import Path
 from typing import Tuple, Dict, List, Iterable
 
@@ -14,13 +15,11 @@ from fvttpacker.packer.packer_assert_helper import PackerAssertHelper
 
 
 class Packer:
-    assert_helper = PackerAssertHelper()
 
     def __init__(self,
                  override_confirmer: OverrideConfirmer = AllYesOverrideConfirmer()):
 
         self.override_confirmer = override_confirmer
-        self.leveldb_tools = LevelDBHelper()
 
     def pack_world_into_dbs_under(self,
                                   path_to_parent_input_dir: Path,
@@ -33,8 +32,8 @@ class Packer:
         :param path_to_parent_target_dir: e.g. "./foundrydata/Data/worlds/test/data"
         """
 
-        self.assert_helper.assert_path_to_parent_target_dir_is_ok(path_to_parent_target_dir)
-        self.assert_helper.assert_path_to_parent_input_dir_is_ok(path_to_parent_input_dir)
+        PackerAssertHelper.assert_path_to_parent_target_dir_is_ok(path_to_parent_target_dir)
+        PackerAssertHelper.assert_path_to_parent_input_dir_is_ok(path_to_parent_input_dir)
 
         input_dir_paths_to_target_db_paths: Dict[Path, Path] = dict()
 
@@ -62,8 +61,8 @@ class Packer:
         :param path_to_parent_target_dir: e.g. "./foundrydata/Data/worlds/test/data"
         """
 
-        self.assert_helper.assert_path_to_parent_target_dir_is_ok(path_to_parent_target_dir)
-        self.assert_helper.assert_path_to_parent_input_dir_is_ok(path_to_parent_input_dir)
+        PackerAssertHelper.assert_path_to_parent_target_dir_is_ok(path_to_parent_target_dir)
+        PackerAssertHelper.assert_path_to_parent_input_dir_is_ok(path_to_parent_input_dir)
 
         input_dir_paths_to_target_db_paths: Dict[Path, Path] = dict()
 
@@ -98,11 +97,11 @@ class Packer:
 
         # check input dir paths
         if not skip_input_checks:
-            self.assert_helper.assert_paths_to_input_dirs_are_ok(input_dir_paths_to_target_db_paths.keys())
+            PackerAssertHelper.assert_paths_to_input_dirs_are_ok(input_dir_paths_to_target_db_paths.keys())
 
         # check target db paths
         if not skip_target_checks:
-            self.assert_helper.assert_paths_to_target_dbs_are_ok(input_dir_paths_to_target_db_paths.values(),
+            PackerAssertHelper.assert_paths_to_target_dbs_are_ok(input_dir_paths_to_target_db_paths.values(),
                                                                  False)
 
         # ask which existing dbs should be overriden and filter out the dbs that should not be overriden
@@ -114,7 +113,8 @@ class Packer:
         # open all the dbs -> fail fast
         input_dir_paths_to_dbs: Dict[Path, DB] = dict()
         for (path_to_input_dir, path_to_target_db) in input_dir_paths_to_target_db_paths.items():
-            input_dir_paths_to_dbs[path_to_input_dir] = LevelDBHelper.try_open_db(path_to_target_db)
+            input_dir_paths_to_dbs[path_to_input_dir] = LevelDBHelper.try_open_db(path_to_target_db,
+                                                                                  skip_checks=True)
 
         # coming this far means:
         # - all input directories were successfully read into dicts
@@ -192,22 +192,23 @@ class Packer:
                      path_to_target_db)
 
         if not skip_input_checks:
-            self.assert_helper.assert_path_to_input_dir_is_ok(path_to_input_dir)
+            PackerAssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
         if not skip_target_checks:
-            self.assert_helper.assert_path_to_target_db_is_ok(path_to_target_db,
+            PackerAssertHelper.assert_path_to_target_db_is_ok(path_to_target_db,
                                                               must_exist=False)
 
-        db = self.leveldb_tools.try_open_db(path_to_target_db)
+        target_db = LevelDBHelper.try_open_db(path_to_target_db,
+                                              skip_checks=True)
 
         logging.debug("Opened LevelDB at '%s' as '%s'",
                       path_to_target_db,
-                      db)
+                      hex(id(target_db)))
 
         self.pack_dir_into_db(path_to_input_dir,
-                              db,
+                              target_db,
                               skip_input_checks=True)
 
-        db.close()
+        target_db.close()
 
     def pack_dir_into_db(self,
                          path_to_input_dir: Path,
@@ -223,22 +224,26 @@ class Packer:
 
         logging.info("Packing directory '%s' into db '%s'",
                      path_to_input_dir,
-                     target_db)
+                     hex(id(target_db)))
 
         if not skip_input_checks:
-            self.assert_helper.assert_path_to_input_dir_is_ok(path_to_input_dir)
+            PackerAssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
 
         # read folder as a whole.
-        folder_dict = self.read_dir_as_dict(path_to_input_dir,
-                                            skip_checks=True)
+        input_dict = self.read_dir_as_dict(path_to_input_dir,
+                                           skip_checks=True)
+
+        logging.debug("Read directory '%s' as dict '%s'",
+                      path_to_input_dir,
+                      hex(id(input_dict)))
 
         # avoid rewriting whole database everytime
         # instead only re-write updated entries
-        self.pack_dict_into_db(folder_dict,
+        self.pack_dict_into_db(input_dict,
                                target_db)
 
-    def read_dir_as_dict(self,
-                         path_to_input_dir: Path,
+    @staticmethod
+    def read_dir_as_dict(path_to_input_dir: Path,
                          skip_checks=False) -> Dict[str, str]:
         # May not be the best use of memory, but it's nice to have everything in a dict
         """
@@ -251,10 +256,10 @@ class Packer:
         :return: dict with filenames as keys and file contents as values
         """
 
-        logging.info("Reading directory '%s' as dict", path_to_input_dir)
+        logging.info("Reading directory '%s' into a dict", path_to_input_dir)
 
         if not skip_checks:
-            self.assert_helper.assert_path_to_input_dir_is_ok(path_to_input_dir)
+            PackerAssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
 
         result = dict()
 
@@ -263,7 +268,10 @@ class Packer:
             logging.debug("Reading file '%s'", path_to_file)
 
             with open(path_to_file, "rt", encoding=UTF_8) as file:
-                json_dict = json.load(file)
+                try:
+                    json_dict = json.load(file)
+                except JSONDecodeError as err:
+                    raise FvttPackerException(f"Error while parsing '{path_to_file}' as json, reason:\n'{err}'")
 
             # remove .json at the end
             key: str = path_to_file.name[0:-5]
@@ -287,8 +295,8 @@ class Packer:
         """
 
         logging.info("Packing dict '%s' into db '%s'",
-                     input_dict,
-                     target_db)
+                     hex(id(input_dict)),
+                     hex(id(target_db)))
 
         # noinspection PyProtectedMember
         wb: plyvel._plyvel.WriteBatch = target_db.write_batch()
@@ -320,5 +328,5 @@ class Packer:
                 wb.put(key_bytes, input_dict[key_str].encode(UTF_8))
                 logging.info("Updated key '%s'", key_str)
 
-        logging.debug("Executing batch")
         wb.write()
+        logging.debug("Executing batch")
