@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Union
 
@@ -19,7 +20,13 @@ class LevelDBHelper:
         """
         create_if_missing: bool
 
+        logging.info("Trying to open db at '%s'",
+                     path_to_target_db)
+
         if path_to_target_db.exists():
+
+            logging.debug("Path %s exists",
+                          path_to_target_db)
 
             # Can't handle files
             if not path_to_target_db.is_dir():
@@ -27,6 +34,9 @@ class LevelDBHelper:
 
             # Path exists as directory and can be opened as leveldb
             if LevelDBHelper.test_open_as_leveldb(path_to_target_db):
+
+                logging.debug("Path '%s' can be opened as LevelDB",
+                              path_to_target_db)
                 create_if_missing = False
             # Can't handle folders that are not levelDBs
             else:
@@ -65,6 +75,9 @@ class LevelDBHelper:
         :return: True if the folder contains LOCK, LOG and CURRENT files or if it is empty
         """
 
+        logging.debug("Checking for necessary LevelDB files in '%s'",
+                      path_to_db)
+
         # empty directories are ok
         children = list(path_to_db.glob("*"))
 
@@ -78,9 +91,12 @@ class LevelDBHelper:
         for child in children:
             if child.name == "LOCK":
                 LOCK_found = True
+                logging.debug("Found LOCK")
             if child.name == "LOG":
                 LOG_found = True
+                logging.debug("Found LOG")
             if child.name == "CURRENT":
                 CURRENT_found = True
+                logging.debug("Found CURRENT")
 
         return LOCK_found and LOG_found and CURRENT_found

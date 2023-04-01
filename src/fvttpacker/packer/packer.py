@@ -86,8 +86,11 @@ class Packer:
                            skip_target_checks=False) -> None:
         """
         Packs all the given directories (keys). Each into its respective LevelDB at the given path (values).
+
         :param input_dir_paths_to_target_db_paths: Contains the paths to the input directories as keys
         and the paths to the target LevelDBs as values
+        :param skip_input_checks:
+        :param skip_target_checks:
         """
 
         path_to_input_dir: Path
@@ -147,7 +150,7 @@ class Packer:
 
             # Don't copy over the ones which shouldn't be overriden
             if path_to_target_db in paths_to_existing_target_dbs \
-                    and target_db_paths_to_override_answers[path_to_target_db] == False:
+                    and not target_db_paths_to_override_answers[path_to_target_db]:
                 continue
 
             result[path_to_input_dir] = path_to_target_db
@@ -177,9 +180,17 @@ class Packer:
         The filename will be the key encoded as UTF-8.
         The file content will be the json string without indentations also encoded as UTF-8.
 
+
         :param path_to_input_dir: e.g. "./unpacked_dbs/actors"
         :param path_to_target_db: e.g. "./foundrydata/Data/worlds/test/data/actors"
+        :param skip_input_checks:
+        :param skip_target_checks:
         """
+
+        logging.info("Packing directory %s into db at %s",
+                     path_to_input_dir,
+                     path_to_target_db)
+
         if not skip_input_checks:
             self.assert_helper.assert_path_to_input_dir_is_ok(path_to_input_dir)
         if not skip_target_checks:
@@ -187,6 +198,10 @@ class Packer:
                                                               must_exist=False)
 
         db = self.leveldb_tools.try_open_db(path_to_target_db)
+
+        logging.debug("Opened LevelDB at '%s' as '%s'",
+                      path_to_target_db,
+                      db)
 
         self.pack_dir_into_db(path_to_input_dir,
                               db,
@@ -202,8 +217,13 @@ class Packer:
         Packs the given directory (`input_dir`) into the given LevelDB `target_db`
         :param path_to_input_dir: The directory to pack
         :param target_db: The LevelDB to pack the `input_dir` into
+        :param skip_input_checks:
         :return:
         """
+
+        logging.info("Packing directory '%s' into db '%s'",
+                     path_to_input_dir,
+                     target_db)
 
         if not skip_input_checks:
             self.assert_helper.assert_path_to_input_dir_is_ok(path_to_input_dir)
@@ -226,8 +246,12 @@ class Packer:
         With filenames as keys and file contents as values.
 
         :param path_to_input_dir: e.g. "./unpacked_data/actors"
+        :param skip_checks:
+
         :return: dict with filenames as keys and file contents as values
         """
+
+        logging.info("Reading directory '%s' as dict", path_to_input_dir)
 
         if not skip_checks:
             self.assert_helper.assert_path_to_input_dir_is_ok(path_to_input_dir)
@@ -235,6 +259,9 @@ class Packer:
         result = dict()
 
         for path_to_file in path_to_input_dir.glob("*.json"):
+
+            logging.debug("Reading file '%s'", path_to_file)
+
             with open(path_to_file, "rt", encoding=UTF_8) as file:
                 json_dict = json.load(file)
 
@@ -245,8 +272,8 @@ class Packer:
 
         return result
 
-    def pack_dict_into_db(self,
-                          input_dict: Dict[str, str],
+    @staticmethod
+    def pack_dict_into_db(input_dict: Dict[str, str],
                           target_db: DB) -> None:
 
         """
@@ -254,11 +281,18 @@ class Packer:
         - Removes all entries from `to_db` that are not in `from_dict`
         - Adds missing entries to `to_db`
         - Updates entries in `to_db` if necessary
+
         :param input_dict: The dict to pack into the LevelDB
         :param target_db: The handle of the LevelDB to pack the dict into
         """
 
+        logging.info("Packing dict '%s' into db '%s'",
+                     input_dict,
+                     target_db)
+
+        # noinspection PyProtectedMember
         wb: plyvel._plyvel.WriteBatch = target_db.write_batch()
+        logging.debug("Created batch")
 
         entry: Tuple[bytes]
 
@@ -269,7 +303,7 @@ class Packer:
 
             if key_str not in input_dict.keys():
                 wb.delete(key_bytes)
-                logging.debug("Deleted key %s from db", key_str)
+                logging.info("Deleted key '%s'", key_str)
 
         key_str: str
         value_str: str
@@ -280,11 +314,11 @@ class Packer:
 
             current_value_bytes: bytes = target_db.get(key_bytes)
 
-            should_put = current_value_bytes is None \
-                         or current_value_bytes != target_value_bytes
+            should_put = current_value_bytes is None or current_value_bytes != target_value_bytes
 
             if should_put:
                 wb.put(key_bytes, input_dict[key_str].encode(UTF_8))
-                logging.debug("Updated key %s", key_str)
+                logging.info("Updated key '%s'", key_str)
 
+        logging.debug("Executing batch")
         wb.write()
