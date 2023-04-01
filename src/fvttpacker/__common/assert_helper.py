@@ -1,11 +1,11 @@
 from pathlib import Path
 from typing import Iterable
 
+from fvttpacker.__common.leveldb_helper import LevelDBHelper
 from fvttpacker.fvttpacker_exception import FvttPackerException
-from fvttpacker.leveldb_helper import LevelDBHelper
 
 
-class PackerAssertHelper:
+class AssertHelper:
 
     @staticmethod
     def __assert_path_to_dir_is_ok(path_to_dir: Path):
@@ -19,20 +19,20 @@ class PackerAssertHelper:
 
     @staticmethod
     def assert_path_to_parent_input_dir_is_ok(path_to_parent_input_dir: Path):
-        PackerAssertHelper.__assert_path_to_dir_is_ok(path_to_parent_input_dir)
+        AssertHelper.__assert_path_to_dir_is_ok(path_to_parent_input_dir)
 
     @staticmethod
     def assert_path_to_parent_target_dir_is_ok(path_to_parent_target_dir: Path):
-        PackerAssertHelper.__assert_path_to_dir_is_ok(path_to_parent_target_dir)
+        AssertHelper.__assert_path_to_dir_is_ok(path_to_parent_target_dir)
 
     @staticmethod
     def assert_paths_to_input_dirs_are_ok(paths_to_input_dirs: Iterable[Path]):
         for path_to_input_dir in paths_to_input_dirs:
-            PackerAssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
+            AssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
 
     @staticmethod
     def assert_path_to_input_dir_is_ok(path_to_input_dir: Path):
-        PackerAssertHelper.__assert_path_to_dir_is_ok(path_to_input_dir)
+        AssertHelper.__assert_path_to_dir_is_ok(path_to_input_dir)
 
     @staticmethod
     def assert_paths_to_target_dbs_are_ok(paths_to_target_dbs: Iterable[Path],

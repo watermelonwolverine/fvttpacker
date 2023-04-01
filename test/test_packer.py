@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from fvttpacker.__cli_wrapper.cli_override_confirmer import InteractiveOverrideConfirmer
+from fvttpacker.__cli_wrapper.interactive_override_confirmer import InteractiveOverrideConfirmer
 from fvttpacker.packer.packer import Packer
 
 target_dir = Path("pack_results")

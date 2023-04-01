@@ -9,9 +9,9 @@ from plyvel import DB
 
 from fvttpacker.__constants import world_db_names, UTF_8
 from fvttpacker.fvttpacker_exception import FvttPackerException
-from fvttpacker.leveldb_helper import LevelDBHelper
+from fvttpacker.__common.leveldb_helper import LevelDBHelper
 from fvttpacker.override_confirmer import OverrideConfirmer, AllYesOverrideConfirmer
-from fvttpacker.packer.packer_assert_helper import PackerAssertHelper
+from fvttpacker.__common.assert_helper import AssertHelper
 
 
 class Packer:
@@ -32,8 +32,8 @@ class Packer:
         :param path_to_parent_target_dir: e.g. "./foundrydata/Data/worlds/test/data"
         """
 
-        PackerAssertHelper.assert_path_to_parent_target_dir_is_ok(path_to_parent_target_dir)
-        PackerAssertHelper.assert_path_to_parent_input_dir_is_ok(path_to_parent_input_dir)
+        AssertHelper.assert_path_to_parent_target_dir_is_ok(path_to_parent_target_dir)
+        AssertHelper.assert_path_to_parent_input_dir_is_ok(path_to_parent_input_dir)
 
         input_dir_paths_to_target_db_paths: Dict[Path, Path] = dict()
 
@@ -61,8 +61,8 @@ class Packer:
         :param path_to_parent_target_dir: e.g. "./foundrydata/Data/worlds/test/data"
         """
 
-        PackerAssertHelper.assert_path_to_parent_target_dir_is_ok(path_to_parent_target_dir)
-        PackerAssertHelper.assert_path_to_parent_input_dir_is_ok(path_to_parent_input_dir)
+        AssertHelper.assert_path_to_parent_target_dir_is_ok(path_to_parent_target_dir)
+        AssertHelper.assert_path_to_parent_input_dir_is_ok(path_to_parent_input_dir)
 
         input_dir_paths_to_target_db_paths: Dict[Path, Path] = dict()
 
@@ -97,12 +97,12 @@ class Packer:
 
         # check input dir paths
         if not skip_input_checks:
-            PackerAssertHelper.assert_paths_to_input_dirs_are_ok(input_dir_paths_to_target_db_paths.keys())
+            AssertHelper.assert_paths_to_input_dirs_are_ok(input_dir_paths_to_target_db_paths.keys())
 
         # check target db paths
         if not skip_target_checks:
-            PackerAssertHelper.assert_paths_to_target_dbs_are_ok(input_dir_paths_to_target_db_paths.values(),
-                                                                 False)
+            AssertHelper.assert_paths_to_target_dbs_are_ok(input_dir_paths_to_target_db_paths.values(),
+                                                           False)
 
         # ask which existing dbs should be overriden and filter out the dbs that should not be overriden
         input_dir_paths_to_target_db_paths = self.__ask_and_filter_out_non_override(input_dir_paths_to_target_db_paths)
@@ -192,7 +192,7 @@ class Packer:
                      path_to_target_db)
 
         if not skip_input_checks:
-            PackerAssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
+            AssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
         if not skip_target_checks:
             LevelDBHelper.assert_path_to_target_db_is_ok(path_to_target_db,
                                                          must_exist=False)
@@ -227,7 +227,7 @@ class Packer:
                      hex(id(target_db)))
 
         if not skip_input_checks:
-            PackerAssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
+            AssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
 
         # read folder as a whole.
         input_dict = self.read_dir_as_dict(path_to_input_dir,
@@ -259,7 +259,7 @@ class Packer:
         logging.info("Reading directory '%s' into a dict", path_to_input_dir)
 
         if not skip_checks:
-            PackerAssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
+            AssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
 
         result = dict()
 
