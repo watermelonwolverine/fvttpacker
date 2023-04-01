@@ -26,27 +26,29 @@ class Packer:
                                   path_to_parent_input_dir: Path,
                                   path_to_parent_target_dir: Path) -> None:
         """
-        Similar to `pack_subdirs_into_dbs_at`, but only packs the sub-folders under the given directory (`parent_input_dir`)
-        that belong to a world.
+        Similar to `pack_subdirs_into_dbs_under`, but only packs the sub-folders under the given directory
+        (`path_to_parent_input_dir`) that belong to a world.
         E.g. "actors", "cards", etc. will be packed, "monster-compendia" will not be packed.
+        :param path_to_parent_input_dir: e.g. "./unpacked_dbs/test-world"
+        :param path_to_parent_target_dir: e.g. "./foundrydata/Data/worlds/test/data"
         """
 
         self.assert_helper.assert_path_to_parent_target_dir_is_ok(path_to_parent_target_dir)
         self.assert_helper.assert_path_to_parent_input_dir_is_ok(path_to_parent_input_dir)
 
-        dirs_to_dbs: Dict[Path, Path] = dict()
+        input_dir_paths_to_target_db_paths: Dict[Path, Path] = dict()
 
         for db_name in world_db_names:
-            input_dir = path_to_parent_input_dir.joinpath(db_name)
+            path_to_input_dir = path_to_parent_input_dir.joinpath(db_name)
 
-            if not input_dir.is_dir():
+            if not path_to_input_dir.is_dir():
                 raise FvttPackerException(f"Missing world data directory {db_name}.")
 
-            target_db = path_to_parent_target_dir.joinpath(db_name)
+            path_to_target_db = path_to_parent_target_dir.joinpath(db_name)
 
-            dirs_to_dbs[input_dir] = target_db
+            input_dir_paths_to_target_db_paths[path_to_input_dir] = path_to_target_db
 
-        self.pack_dirs_into_dbs(dirs_to_dbs,
+        self.pack_dirs_into_dbs(input_dir_paths_to_target_db_paths,
                                 skip_input_checks=True)
 
     def pack_subdirs_into_dbs_under(self,
@@ -56,26 +58,26 @@ class Packer:
         Packs all sub-folders located under the given directory (`parent_input_dir`) into LevelDBs located under the
         given target directory (`parent_target_dir`).
 
-        :param path_to_parent_input_dir: e.g. ".unpacked_dbs"
+        :param path_to_parent_input_dir: e.g. "./unpacked_dbs"
         :param path_to_parent_target_dir: e.g. "./foundrydata/Data/worlds/test/data"
         """
 
         self.assert_helper.assert_path_to_parent_target_dir_is_ok(path_to_parent_target_dir)
         self.assert_helper.assert_path_to_parent_input_dir_is_ok(path_to_parent_input_dir)
 
-        dirs_to_dbs: Dict[Path, Path] = dict()
+        input_dir_paths_to_target_db_paths: Dict[Path, Path] = dict()
 
         for db_name in path_to_parent_input_dir.glob("*/"):
             # Remove trailing /
             db_name = db_name[:-1]
 
-            input_dir = path_to_parent_input_dir.joinpath(db_name)
+            path_to_input_dir = path_to_parent_input_dir.joinpath(db_name)
 
-            target_db = path_to_parent_target_dir.joinpath(db_name)
+            path_to_target_db = path_to_parent_target_dir.joinpath(db_name)
 
-            dirs_to_dbs[input_dir] = target_db
+            input_dir_paths_to_target_db_paths[path_to_input_dir] = path_to_target_db
 
-        self.pack_dirs_into_dbs(dirs_to_dbs,
+        self.pack_dirs_into_dbs(input_dir_paths_to_target_db_paths,
                                 skip_input_checks=True)
 
     def pack_dirs_into_dbs(self,
@@ -84,7 +86,8 @@ class Packer:
                            skip_target_checks=False) -> None:
         """
         Packs all the given directories (keys). Each into its respective LevelDB at the given path (values).
-        :param input_dir_paths_to_target_db_paths:
+        :param input_dir_paths_to_target_db_paths: Contains the paths to the input directories as keys
+        and the paths to the target LevelDBs as values
         """
 
         path_to_input_dir: Path
@@ -105,15 +108,14 @@ class Packer:
         # read all input directories -> fail fast
         input_dir_paths_to_dicts = self.__read_dirs_as_dicts(input_dir_paths_to_target_db_paths.keys())
 
-        input_dir_paths_to_dbs: Dict[Path, DB] = dict()
-
         # open all the dbs -> fail fast
+        input_dir_paths_to_dbs: Dict[Path, DB] = dict()
         for (path_to_input_dir, path_to_target_db) in input_dir_paths_to_target_db_paths.items():
             input_dir_paths_to_dbs[path_to_input_dir] = LevelDBHelper.try_open_db(path_to_target_db)
 
         # coming this far means:
-        # - all input directories could be read into dicts
-        # - all target dbs could be opened as LevelDBs
+        # - all input directories were successfully read into dicts
+        # - all target dbs were successfully opened as LevelDBs
         try:
             # pack all the folders into
             for (path_to_input_dir, target_db) in input_dir_paths_to_dbs.items():
@@ -128,23 +130,24 @@ class Packer:
                                           input_dir_paths_to_target_db_paths: Dict[Path, Path]) -> Dict[Path, Path]:
 
         # look for existing target dbs
-        existing_target_dbs: List[Path] = list()
+        paths_to_existing_target_dbs: List[Path] = list()
         for (path_to_input_dir, path_to_target_db) in input_dir_paths_to_target_db_paths.items():
             if path_to_target_db.exists():
-                existing_target_dbs.append(path_to_target_db)
+                paths_to_existing_target_dbs.append(path_to_target_db)
 
         # ask which existing dbs should be overriden
-        override_answer: Dict[Path, bool] = dict()
-        if len(existing_target_dbs) > 0:
-            override_answer = self.override_confirmer.confirm_batch_override_leveldb(existing_target_dbs)
+        target_db_paths_to_override_answers: Dict[Path, bool] = dict()
+        if len(paths_to_existing_target_dbs) > 0:
+            target_db_paths_to_override_answers = \
+                self.override_confirmer.confirm_batch_override_leveldb(paths_to_existing_target_dbs)
 
         # filter out the path to dbs that should not be overriden
         result: Dict[Path, Path] = dict()
         for (path_to_input_dir, path_to_target_db) in input_dir_paths_to_target_db_paths.items():
 
             # Don't copy over the ones which shouldn't be overriden
-            if path_to_target_db in existing_target_dbs \
-                    and override_answer[path_to_target_db] == False:
+            if path_to_target_db in paths_to_existing_target_dbs \
+                    and target_db_paths_to_override_answers[path_to_target_db] == False:
                 continue
 
             result[path_to_input_dir] = path_to_target_db
@@ -243,15 +246,15 @@ class Packer:
         return result
 
     def pack_dict_into_db(self,
-                          from_dict: Dict[str, str],
+                          input_dict: Dict[str, str],
                           target_db: DB) -> None:
 
         """
-        Packs the given dictionary (`from_dict`) into the given LevelDB (`target_db`).
+        Packs the given dictionary (`input_dict`) into the given LevelDB (`target_db`).
         - Removes all entries from `to_db` that are not in `from_dict`
         - Adds missing entries to `to_db`
         - Updates entries in `to_db` if necessary
-        :param from_dict: The dict to pack into the LevelDB
+        :param input_dict: The dict to pack into the LevelDB
         :param target_db: The handle of the LevelDB to pack the dict into
         """
 
@@ -264,13 +267,13 @@ class Packer:
             key_bytes: bytes = entry[0]
             key_str: str = key_bytes.decode(UTF_8)
 
-            if key_str not in from_dict.keys():
+            if key_str not in input_dict.keys():
                 wb.delete(key_bytes)
                 logging.debug("Deleted key %s from db", key_str)
 
         key_str: str
         value_str: str
-        for (key_str, value_str) in from_dict.items():
+        for (key_str, value_str) in input_dict.items():
 
             key_bytes: bytes = key_str.encode(UTF_8)
             target_value_bytes: bytes = value_str.encode(UTF_8)
@@ -281,7 +284,7 @@ class Packer:
                          or current_value_bytes != target_value_bytes
 
             if should_put:
-                wb.put(key_bytes, from_dict[key_str].encode(UTF_8))
+                wb.put(key_bytes, input_dict[key_str].encode(UTF_8))
                 logging.debug("Updated key %s", key_str)
 
         wb.write()
