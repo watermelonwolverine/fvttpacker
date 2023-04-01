@@ -5,7 +5,6 @@ from typing import Union
 import plyvel
 
 from fvttpacker.fvttpacker_exception import FvttPackerException
-from fvttpacker.packer.packer_assert_helper import PackerAssertHelper
 
 
 class LevelDBHelper:
@@ -27,8 +26,8 @@ class LevelDBHelper:
                       path_to_target_db)
 
         if not skip_checks:
-            PackerAssertHelper.assert_path_to_target_db_is_ok(path_to_target_db,
-                                                              must_exist=False)
+            LevelDBHelper.assert_path_to_target_db_is_ok(path_to_target_db,
+                                                         must_exist=False)
 
         try:
             # bool_create_if_missing is not working even though it is suggested
@@ -37,6 +36,23 @@ class LevelDBHelper:
                              create_if_missing=True)
         except plyvel.Error as err:
             raise FvttPackerException(f"Unable to open {path_to_target_db} as leveldb.", err)
+
+    @staticmethod
+    def assert_path_to_target_db_is_ok(path_to_target_db: Path,
+                                       must_exist):
+
+        # may have to exist
+        if must_exist and not path_to_target_db.exists():
+            raise FvttPackerException(f"Directory '{path_to_target_db}' does not exist")
+
+        # if exists, has to be a directory
+        if path_to_target_db.exists() and not path_to_target_db.is_dir():
+            raise FvttPackerException(f"Path '{path_to_target_db}' already exists but not as a directory.")
+
+        # TODO: write test-case
+        # if exists and dir, must be openable as LevelDB
+        if path_to_target_db.exists() and not LevelDBHelper.test_open_as_leveldb(path_to_target_db):
+            raise FvttPackerException(f"Path '{path_to_target_db}' cannot be opened as LevelDB")
 
     @staticmethod
     def test_open_as_leveldb(path_to_db: Path):

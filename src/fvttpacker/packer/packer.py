@@ -194,8 +194,8 @@ class Packer:
         if not skip_input_checks:
             PackerAssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
         if not skip_target_checks:
-            PackerAssertHelper.assert_path_to_target_db_is_ok(path_to_target_db,
-                                                              must_exist=False)
+            LevelDBHelper.assert_path_to_target_db_is_ok(path_to_target_db,
+                                                         must_exist=False)
 
         target_db = LevelDBHelper.try_open_db(path_to_target_db,
                                               skip_checks=True)
