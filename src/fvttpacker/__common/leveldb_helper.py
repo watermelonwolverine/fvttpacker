@@ -10,49 +10,49 @@ from fvttpacker.fvttpacker_exception import FvttPackerException
 class LevelDBHelper:
 
     @staticmethod
-    def try_open_db(path_to_target_db: Path,
-                    skip_checks) -> Union[plyvel.DB, None]:
+    def try_open_db(path_to_db: Path,
+                    skip_checks: bool,
+                    must_exist: bool) -> Union[plyvel.DB, None]:
         """
-        Tries to open the `target_db`
-        If it exists it confirms overriding via the `override_confirmer` that was given to the constructor.
+        Tries to open the LevelDB at the given path (`path_to_db`)
 
-        :param path_to_target_db: Path to the db to open.
+        :param path_to_db: Path to the LevelDB to open.
         :param skip_checks:
 
         :return: The handle to the db.
         """
 
-        logging.debug("Trying to open db at '%s'",
-                      path_to_target_db)
+        logging.debug("Trying to open LevelDB at '%s'",
+                      path_to_db)
 
         if not skip_checks:
-            LevelDBHelper.assert_path_to_target_db_is_ok(path_to_target_db,
-                                                         must_exist=False)
+            LevelDBHelper.assert_path_to_db_is_ok(path_to_db,
+                                                  must_exist=must_exist)
 
         try:
             # bool_create_if_missing is not working even though it is suggested
             # use create_if_missing instead
-            return plyvel.DB(str(path_to_target_db),
-                             create_if_missing=True)
+            return plyvel.DB(str(path_to_db),
+                             create_if_missing=not must_exist)
         except plyvel.Error as err:
-            raise FvttPackerException(f"Unable to open {path_to_target_db} as leveldb.", err)
+            raise FvttPackerException(f"Unable to open {path_to_db} as leveldb.", err)
 
     @staticmethod
-    def assert_path_to_target_db_is_ok(path_to_target_db: Path,
-                                       must_exist):
+    def assert_path_to_db_is_ok(path_to_db: Path,
+                                must_exist):
 
         # may have to exist
-        if must_exist and not path_to_target_db.exists():
-            raise FvttPackerException(f"Directory '{path_to_target_db}' does not exist")
+        if must_exist and not path_to_db.exists():
+            raise FvttPackerException(f"Directory '{path_to_db}' does not exist")
 
         # if exists, has to be a directory
-        if path_to_target_db.exists() and not path_to_target_db.is_dir():
-            raise FvttPackerException(f"Path '{path_to_target_db}' already exists but not as a directory.")
+        if path_to_db.exists() and not path_to_db.is_dir():
+            raise FvttPackerException(f"Path '{path_to_db}' exists but not as a directory.")
 
         # TODO: write test-case
         # if exists and dir, must be openable as LevelDB
-        if path_to_target_db.exists() and not LevelDBHelper.test_open_as_leveldb(path_to_target_db):
-            raise FvttPackerException(f"Path '{path_to_target_db}' cannot be opened as LevelDB")
+        if path_to_db.exists() and not LevelDBHelper.test_open_as_leveldb(path_to_db):
+            raise FvttPackerException(f"Path '{path_to_db}' cannot be opened as LevelDB")
 
     @staticmethod
     def test_open_as_leveldb(path_to_db: Path):

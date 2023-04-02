@@ -17,42 +17,42 @@ class InteractiveOverrideConfirmer(OverrideConfirmer):
                                                 text_io_wrapper_in)
 
     def confirm_override_leveldb(self,
-                                 target_db: Path) -> bool:
+                                 path_to_target_db: Path) -> bool:
 
-        question = str(f"The LevelDB '{target_db}' already exists.\n'"
+        question = str(f"The LevelDB '{path_to_target_db}' already exists.\n'"
                        f"Do you want to override it?\n")
 
         result = self.__user_interactor.ask_yes_or_no_question(question)
 
         if result:
-            self.__text_io_wrapper_out.write(f"Overriding '{target_db}'...\n")
+            self.__text_io_wrapper_out.write(f"Overriding '{path_to_target_db}'...\n")
         else:
-            self.__text_io_wrapper_out.write(f"Not overriding '{target_db}'...\n")
+            self.__text_io_wrapper_out.write(f"Not overriding '{path_to_target_db}'...\n")
 
         return result
 
     def confirm_override_folder(self,
-                                target_folder: Path) -> bool:
+                                path_to_target_dir: Path) -> bool:
 
-        question = str(f"The folder '{target_folder}' already exists.\n'"
+        question = str(f"The folder '{path_to_target_dir}' already exists.\n'"
                        f"Do you want to override it and its contents?\n")
 
         result = self.__user_interactor.ask_yes_or_no_question(question)
 
         if result:
-            self.__text_io_wrapper_out.write(f"Overriding '{target_folder}'.\n")
+            self.__text_io_wrapper_out.write(f"Overriding '{path_to_target_dir}'.\n")
         else:
-            self.__text_io_wrapper_out.write(f"Not overriding '{target_folder}'.\n")
+            self.__text_io_wrapper_out.write(f"Not overriding '{path_to_target_dir}'.\n")
 
         return result
 
     def confirm_batch_override_leveldb(self,
-                                       target_dbs: List[Path]) -> Dict[Path, bool]:
+                                       paths_to_target_dbs: List[Path]) -> Dict[Path, bool]:
         # Build question
         question = "The following LevelDBs already exist:\n"
 
         n: int = 1
-        for target_db in target_dbs:
+        for target_db in paths_to_target_dbs:
             question += f"{n}: {target_db}\n"
             n += 1
 
@@ -65,7 +65,7 @@ class InteractiveOverrideConfirmer(OverrideConfirmer):
         # Convert list of integers into dict
         result: Dict[Path, bool] = dict()
         n = 1
-        for target_db in target_dbs:
+        for target_db in paths_to_target_dbs:
             if n in numbers:
                 result[target_db] = False
             else:

@@ -2,16 +2,17 @@ import json
 import logging
 from json import JSONDecodeError
 from pathlib import Path
-from typing import Tuple, Dict, List, Iterable
+from typing import Tuple, Dict, Iterable
 
 import plyvel
 from plyvel import DB
 
+from fvttpacker.__common.assert_helper import AssertHelper
+from fvttpacker.__common.leveldb_helper import LevelDBHelper
+from fvttpacker.__common.override_helper import OverrideHelper
 from fvttpacker.__constants import world_db_names, UTF_8
 from fvttpacker.fvttpacker_exception import FvttPackerException
-from fvttpacker.__common.leveldb_helper import LevelDBHelper
 from fvttpacker.override_confirmer import OverrideConfirmer, AllYesOverrideConfirmer
-from fvttpacker.__common.assert_helper import AssertHelper
 
 
 class Packer:
@@ -41,7 +42,7 @@ class Packer:
             path_to_input_dir = path_to_parent_input_dir.joinpath(db_name)
 
             if not path_to_input_dir.is_dir():
-                raise FvttPackerException(f"Missing world data directory {db_name}.")
+                raise FvttPackerException(f"Missing world data directory {db_name} under {path_to_input_dir}.")
 
             path_to_target_db = path_to_parent_target_dir.joinpath(db_name)
 
@@ -101,11 +102,12 @@ class Packer:
 
         # check target db paths
         if not skip_target_checks:
-            AssertHelper.assert_paths_to_target_dbs_are_ok(input_dir_paths_to_target_db_paths.values(),
-                                                           False)
+            AssertHelper.assert_paths_to_target_dbs_are_ok(input_dir_paths_to_target_db_paths.values())
 
         # ask which existing dbs should be overriden and filter out the dbs that should not be overriden
-        input_dir_paths_to_target_db_paths = self.__ask_and_filter_out_non_override(input_dir_paths_to_target_db_paths)
+        input_dir_paths_to_target_db_paths = OverrideHelper.ask_and_filter_out_non_override(
+            input_dir_paths_to_target_db_paths,
+            self.override_confirmer.confirm_batch_override_leveldb)
 
         # read all input directories -> fail fast
         input_dir_paths_to_dicts = self.__read_dirs_as_dicts(input_dir_paths_to_target_db_paths.keys())
@@ -114,7 +116,8 @@ class Packer:
         input_dir_paths_to_dbs: Dict[Path, DB] = dict()
         for (path_to_input_dir, path_to_target_db) in input_dir_paths_to_target_db_paths.items():
             input_dir_paths_to_dbs[path_to_input_dir] = LevelDBHelper.try_open_db(path_to_target_db,
-                                                                                  skip_checks=True)
+                                                                                  skip_checks=True,
+                                                                                  must_exist=False)
 
         # coming this far means:
         # - all input directories were successfully read into dicts
@@ -128,34 +131,6 @@ class Packer:
             # close all the dbs
             for target_db in input_dir_paths_to_dbs.values():
                 target_db.close()
-
-    def __ask_and_filter_out_non_override(self,
-                                          input_dir_paths_to_target_db_paths: Dict[Path, Path]) -> Dict[Path, Path]:
-
-        # look for existing target dbs
-        paths_to_existing_target_dbs: List[Path] = list()
-        for (path_to_input_dir, path_to_target_db) in input_dir_paths_to_target_db_paths.items():
-            if path_to_target_db.exists():
-                paths_to_existing_target_dbs.append(path_to_target_db)
-
-        # ask which existing dbs should be overriden
-        target_db_paths_to_override_answers: Dict[Path, bool] = dict()
-        if len(paths_to_existing_target_dbs) > 0:
-            target_db_paths_to_override_answers = \
-                self.override_confirmer.confirm_batch_override_leveldb(paths_to_existing_target_dbs)
-
-        # filter out the path to dbs that should not be overriden
-        result: Dict[Path, Path] = dict()
-        for (path_to_input_dir, path_to_target_db) in input_dir_paths_to_target_db_paths.items():
-
-            # Don't copy over the ones which shouldn't be overriden
-            if path_to_target_db in paths_to_existing_target_dbs \
-                    and not target_db_paths_to_override_answers[path_to_target_db]:
-                continue
-
-            result[path_to_input_dir] = path_to_target_db
-
-        return result
 
     def __read_dirs_as_dicts(self,
                              paths_to_input_dirs: Iterable[Path]) -> Dict[Path, Dict[str, str]]:
@@ -194,11 +169,12 @@ class Packer:
         if not skip_input_checks:
             AssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
         if not skip_target_checks:
-            LevelDBHelper.assert_path_to_target_db_is_ok(path_to_target_db,
-                                                         must_exist=False)
+            LevelDBHelper.assert_path_to_db_is_ok(path_to_target_db,
+                                                  must_exist=False)
 
         target_db = LevelDBHelper.try_open_db(path_to_target_db,
-                                              skip_checks=True)
+                                              skip_checks=True,
+                                              must_exist=False)
 
         logging.debug("Opened LevelDB at '%s' as '%s'",
                       path_to_target_db,
@@ -294,7 +270,7 @@ class Packer:
         :param target_db: The handle of the LevelDB to pack the dict into
         """
 
-        logging.info("Packing dict '%s' into db '%s'",
+        logging.info("Packing dict '%s' into LevelDB '%s'",
                      hex(id(input_dict)),
                      hex(id(target_db)))
 
