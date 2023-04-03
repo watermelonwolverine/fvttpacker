@@ -35,7 +35,7 @@ class Unpacker:
             path_to_input_db = x_path_to_parent_input_dir.joinpath(db_name)
             path_to_target_dir = y_path_to_parent_target_dir.joinpath(db_name)
 
-            if not path_to_target_dir.is_dir():
+            if not path_to_input_db.is_dir():
                 raise FvttPackerException(f"Missing LevelDB {db_name} under {x_path_to_parent_input_dir}.")
 
             input_db_paths_to_target_dir_paths[path_to_input_db] = path_to_target_dir

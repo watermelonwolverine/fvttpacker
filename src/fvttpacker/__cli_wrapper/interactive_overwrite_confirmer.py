@@ -48,12 +48,24 @@ class InteractiveOverwriteConfirmer(OverwriteConfirmer):
 
     def confirm_batch_overwrite_leveldb(self,
                                         paths_to_target_dbs: List[Path]) -> Dict[Path, bool]:
-        # Build question
-        question = "The following LevelDBs already exist:\n"
+
+        return self.__confirm_overwrite_batch("The following LevelDBs already exist:\n",
+                                              paths_to_target_dbs)
+
+    def confirm_batch_overwrite_dirs(self,
+                                     paths_to_target_dirs: List[Path]) -> Dict[Path, bool]:
+
+        return self.__confirm_overwrite_batch("The following target directories already exist:\n",
+                                              paths_to_target_dirs)
+
+    def __confirm_overwrite_batch(self,
+                                  question: str,
+                                  paths: List[Path]) -> Dict[Path, bool]:
+        path: Path
 
         n: int = 1
-        for target_db in paths_to_target_dbs:
-            question += f"{n}: {target_db}\n"
+        for path in paths:
+            question += f"{n}: {path}\n"
             n += 1
 
         question += "Press Enter if you want to overwrite all," \
@@ -65,11 +77,11 @@ class InteractiveOverwriteConfirmer(OverwriteConfirmer):
         # Convert list of integers into dict
         result: Dict[Path, bool] = dict()
         n = 1
-        for target_db in paths_to_target_dbs:
+        for path in paths:
             if n in numbers:
-                result[target_db] = False
+                result[path] = False
             else:
-                result[target_db] = True
+                result[path] = True
             n += 1
 
         return result

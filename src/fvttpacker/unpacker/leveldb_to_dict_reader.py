@@ -1,8 +1,8 @@
 import logging
 from pathlib import Path
-from typing import Iterable, Dict
+from typing import Iterable, Dict, Union
 
-from plyvel import DB
+import plyvel
 
 from fvttpacker.__common.assert_helper import AssertHelper
 from fvttpacker.__common.leveldb_helper import LevelDBHelper
@@ -38,13 +38,20 @@ class LevelDBToDictReader:
         if not skip_checks:
             AssertHelper.assert_path_to_input_db_is_ok(path_to_input_db)
 
-        with LevelDBHelper.try_open_db(path_to_input_db,
-                                       skip_checks=True,
-                                       must_exist=True) as db:
+        db: Union[plyvel.DB, None] = None
+
+        try:
+            db = LevelDBHelper.try_open_db(path_to_input_db,
+                                           skip_checks=True,
+                                           must_exist=True)
+
             return LevelDBToDictReader.read_db_into_dict(db)
+        finally:
+            if db is not None:
+                db.close()
 
     @staticmethod
-    def read_db_into_dict(db: DB) -> Dict[str, str]:
+    def read_db_into_dict(db: plyvel.DB) -> Dict[str, str]:
 
         result: Dict[str, str] = dict()
 
