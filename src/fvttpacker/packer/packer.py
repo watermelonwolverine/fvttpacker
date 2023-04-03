@@ -1,18 +1,17 @@
-import json
 import logging
-from json import JSONDecodeError
 from pathlib import Path
-from typing import Tuple, Dict, Iterable
+from typing import Dict
 
-import plyvel
 from plyvel import DB
 
 from fvttpacker.__common.assert_helper import AssertHelper
 from fvttpacker.__common.leveldb_helper import LevelDBHelper
 from fvttpacker.__common.override_helper import OverrideHelper
-from fvttpacker.__constants import world_db_names, UTF_8
+from fvttpacker.__constants import world_db_names
 from fvttpacker.fvttpacker_exception import FvttPackerException
 from fvttpacker.override_confirmer import OverrideConfirmer, AllYesOverrideConfirmer
+from fvttpacker.packer.dict_to_leveldb_writer import DictToLevelDBWriter
+from fvttpacker.packer.dir_to_leveldb_reader import DirToDictReader
 
 
 class Packer:
@@ -110,7 +109,7 @@ class Packer:
             self.override_confirmer.confirm_batch_override_leveldb)
 
         # read all input directories -> fail fast
-        input_dir_paths_to_dicts = self.__read_dirs_as_dicts(input_dir_paths_to_target_db_paths.keys())
+        input_dir_paths_to_dicts = DirToDictReader.read_dirs_as_dicts(input_dir_paths_to_target_db_paths.keys())
 
         # open all the dbs -> fail fast
         input_dir_paths_to_dbs: Dict[Path, DB] = dict()
@@ -125,23 +124,12 @@ class Packer:
         try:
             # pack all the folders into
             for (path_to_input_dir, target_db) in input_dir_paths_to_dbs.items():
-                self.pack_dict_into_db(input_dir_paths_to_dicts[path_to_input_dir],
-                                       target_db)
+                DictToLevelDBWriter.write_dict_into_db(input_dir_paths_to_dicts[path_to_input_dir],
+                                                       target_db)
         finally:
             # close all the dbs
             for target_db in input_dir_paths_to_dbs.values():
                 target_db.close()
-
-    def __read_dirs_as_dicts(self,
-                             paths_to_input_dirs: Iterable[Path]) -> Dict[Path, Dict[str, str]]:
-
-        result: Dict[Path, Dict[str, str]] = dict()
-
-        for path_to_input_dir in paths_to_input_dirs:
-            result[path_to_input_dir] = self.read_dir_as_dict(path_to_input_dir,
-                                                              skip_checks=True)
-
-        return result
 
     def pack_dir_into_db_at(self,
                             path_to_input_dir: Path,
@@ -186,8 +174,8 @@ class Packer:
 
         target_db.close()
 
-    def pack_dir_into_db(self,
-                         path_to_input_dir: Path,
+    @staticmethod
+    def pack_dir_into_db(path_to_input_dir: Path,
                          target_db: DB,
                          skip_input_checks=False) -> None:
         """
@@ -206,8 +194,8 @@ class Packer:
             AssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
 
         # read folder as a whole.
-        input_dict = self.read_dir_as_dict(path_to_input_dir,
-                                           skip_checks=True)
+        input_dict = DirToDictReader.read_dir_as_dict(path_to_input_dir,
+                                                      skip_checks=True)
 
         logging.debug("Read directory '%s' as dict '%s'",
                       path_to_input_dir,
@@ -215,94 +203,5 @@ class Packer:
 
         # avoid rewriting whole database everytime
         # instead only re-write updated entries
-        self.pack_dict_into_db(input_dict,
-                               target_db)
-
-    @staticmethod
-    def read_dir_as_dict(path_to_input_dir: Path,
-                         skip_checks=False) -> Dict[str, str]:
-        # May not be the best use of memory, but it's nice to have everything in a dict
-        """
-        Reads the given directory (`path_to_input_dir`) into memory.
-        With filenames as keys and file contents as values.
-
-        :param path_to_input_dir: e.g. "./unpacked_data/actors"
-        :param skip_checks:
-
-        :return: dict with filenames as keys and file contents as values
-        """
-
-        logging.info("Reading directory '%s' into a dict", path_to_input_dir)
-
-        if not skip_checks:
-            AssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
-
-        result = dict()
-
-        for path_to_file in path_to_input_dir.glob("*.json"):
-
-            logging.debug("Reading file '%s'", path_to_file)
-
-            with open(path_to_file, "rt", encoding=UTF_8) as file:
-                try:
-                    json_dict = json.load(file)
-                except JSONDecodeError as err:
-                    raise FvttPackerException(f"Error while parsing '{path_to_file}' as json, reason:\n'{err}'")
-
-            # remove .json at the end
-            key: str = path_to_file.name[0:-5]
-
-            result[key] = json.dumps(json_dict)
-
-        return result
-
-    @staticmethod
-    def pack_dict_into_db(input_dict: Dict[str, str],
-                          target_db: DB) -> None:
-
-        """
-        Packs the given dictionary (`input_dict`) into the given LevelDB (`target_db`).
-        - Removes all entries from `to_db` that are not in `from_dict`
-        - Adds missing entries to `to_db`
-        - Updates entries in `to_db` if necessary
-
-        :param input_dict: The dict to pack into the LevelDB
-        :param target_db: The handle of the LevelDB to pack the dict into
-        """
-
-        logging.info("Packing dict '%s' into LevelDB '%s'",
-                     hex(id(input_dict)),
-                     hex(id(target_db)))
-
-        # noinspection PyProtectedMember
-        wb: plyvel._plyvel.WriteBatch = target_db.write_batch()
-        logging.debug("Created batch")
-
-        entry: Tuple[bytes]
-
-        # Remove entries
-        for entry in target_db.iterator():
-            key_bytes: bytes = entry[0]
-            key_str: str = key_bytes.decode(UTF_8)
-
-            if key_str not in input_dict.keys():
-                wb.delete(key_bytes)
-                logging.info("Deleted key '%s'", key_str)
-
-        key_str: str
-        value_str: str
-        for (key_str, value_str) in input_dict.items():
-
-            key_bytes: bytes = key_str.encode(UTF_8)
-            target_value_bytes: bytes = value_str.encode(UTF_8)
-
-            current_value_bytes: bytes = target_db.get(key_bytes)
-
-            should_put = current_value_bytes is None or current_value_bytes != target_value_bytes
-
-            if should_put:
-                wb.put(key_bytes, input_dict[key_str].encode(UTF_8))
-                logging.info("Updated key '%s'", key_str)
-
-        wb.write()
-        logging.debug("Executing batch")
+        DictToLevelDBWriter.write_dict_into_db(input_dict,
+                                               target_db)

@@ -7,5 +7,5 @@ output_dir = Path("unpack_results")
 
 unpacker = Unpacker()
 
-unpacker.unpack_world_into_dirs_under(path_to_world,
-                                      output_dir)
+unpacker.unpack_world_dbs_under_x_into_dirs_under_y(path_to_world,
+                                                    output_dir)
