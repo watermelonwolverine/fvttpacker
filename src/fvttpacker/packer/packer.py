@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 from typing import Dict
 
@@ -146,7 +145,7 @@ class Packer:
             skip_input_checks=False,
             skip_target_checks=False) -> None:
         """
-        Packs the given directory (`input_dir`) into the leveldb at the given location (`path_to_target_db`).
+        Packs the given directory (`path_to_input_dir`) into the leveldb at the given location (`path_to_target_db`).
         If the `path_to_target_db` does not point to an existing LevelDB a new one will be created.
         Each json file will be converted into a db entry.
         The filename will be the key encoded as UTF-8.
@@ -155,63 +154,10 @@ class Packer:
 
         :param path_to_input_dir: e.g. "./unpacked_dbs/actors"
         :param path_to_target_db: e.g. "./foundrydata/Data/worlds/test/data/actors"
-        :param skip_input_checks:
-        :param skip_target_checks:
+        :param skip_input_checks: TODO
+        :param skip_target_checks: TODO
         """
 
-        logging.info("Packing directory %s into db at %s",
-                     path_to_input_dir,
-                     path_to_target_db)
-
-        if not skip_input_checks:
-            AssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
-        if not skip_target_checks:
-            LevelDBHelper.assert_path_to_db_is_ok(path_to_target_db,
-                                                  must_exist=False)
-
-        target_db = LevelDBHelper.try_open_db(path_to_target_db,
-                                              skip_checks=True,
-                                              must_exist=False)
-
-        logging.debug("Opened LevelDB at '%s' as '%s'",
-                      path_to_target_db,
-                      hex(id(target_db)))
-
-        Packer.pack_dir_into_db(path_to_input_dir,
-                                target_db,
-                                skip_input_checks=True)
-
-        target_db.close()
-
-    @staticmethod
-    def pack_dir_into_db(
-            path_to_input_dir: Path,
-            target_db: DB,
-            skip_input_checks=False) -> None:
-        """
-        Packs the given directory (`input_dir`) into the given LevelDB `target_db`
-        :param path_to_input_dir: The directory to pack
-        :param target_db: The LevelDB to pack the `input_dir` into
-        :param skip_input_checks:
-        :return:
-        """
-
-        logging.info("Packing directory '%s' into db '%s'",
-                     path_to_input_dir,
-                     hex(id(target_db)))
-
-        if not skip_input_checks:
-            AssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
-
-        # read folder as a whole.
-        input_dict = DirToDictReader.read_dir_as_dict(path_to_input_dir,
-                                                      skip_checks=True)
-
-        logging.debug("Read directory '%s' as dict '%s'",
-                      path_to_input_dir,
-                      hex(id(input_dict)))
-
-        # avoid rewriting whole database everytime
-        # instead only re-write updated entries
-        DictToLevelDBWriter.write_dict_into_db(input_dict,
-                                               target_db)
+        Packer.pack_dirs_into_dbs({path_to_input_dir: path_to_target_db},
+                                  skip_input_checks=skip_input_checks,
+                                  skip_target_checks=skip_target_checks)

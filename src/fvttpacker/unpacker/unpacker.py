@@ -1,13 +1,9 @@
-import json
 from pathlib import Path
 from typing import Dict
 
-import plyvel
-from plyvel import DB
-
 from fvttpacker.__common.assert_helper import AssertHelper
 from fvttpacker.__common.overwrite_helper import OverwriteHelper
-from fvttpacker.__constants import world_db_names, UTF_8
+from fvttpacker.__constants import world_db_names
 from fvttpacker.fvttpacker_exception import FvttPackerException
 from fvttpacker.overwrite_confirmer import OverwriteConfirmer, AllYesOverwriteConfirmer
 from fvttpacker.unpacker.dict_to_dir_writer import DictToDirWriter
@@ -97,8 +93,8 @@ class Unpacker:
 
         :param input_db_paths_to_target_dir_paths: Contains the paths to the input LevelDBs as keys
         and the paths to the target directories as values
-        :param skip_input_checks:
-        :param skip_target_checks:
+        :param skip_input_checks: TODO
+        :param skip_target_checks: TODO
         """
 
         path_to_input_db: Path
@@ -125,45 +121,20 @@ class Unpacker:
                                                 skip_checks=True)
 
     @staticmethod
-    def unpack_db(path_to_db: Path,
-                  target_dir: Path) -> None:
+    def unpack_db_at_x_into_dir_at_y(x_path_to_input_db: Path,
+                                     y_path_to_target_dir: Path,
+                                     skip_input_checks: bool,
+                                     skip_target_checks: bool) -> None:
         """
-        Unpacks the leveldb at the given `path_to_db` into a new folder under the given `output_dir`
-        :param path_to_db: e.g. "./foundrydata/Data/worlds/test/data/actors"
-        :param target_dir: e.g. "./unpack_result/actors"
-        """
+        Unpacks the leveldb at the LevelDB at the given Path (`x_path_to_input_db`) into the directory at the given
+        target Path (`y_path_to_target_dir`).
 
-        # TODO update
-
-        if not target_dir.exists():
-            target_dir.mkdir()
-
-        db = plyvel.DB(str(path_to_db))
-
-        Unpacker.unpack_db_into_folder(db,
-                                       target_dir)
-
-        db.close()
-
-    @staticmethod
-    def unpack_db_into_folder(db: DB,
-                              target_dir: Path) -> None:
-        """
-        Unpacks the given `db` into the given `target_dir`
-        :param db: leveldb to unpack
-        :param target_dir: e.g. "./unpack_result/actors"
+        :param x_path_to_input_db: e.g. "./foundrydata/Data/worlds/test/data/actors"
+        :param y_path_to_target_dir: e.g. "./unpack_result/actors"
+        :param skip_input_checks: TODO
+        :param skip_target_checks: TODO
         """
 
-        # TODO update
-        for entry in db.iterator():
-            key: bytes = entry[0]
-            value: bytes = entry[1]
-
-            json_dict = json.loads(value.decode(UTF_8))
-
-            target_file = target_dir.joinpath(key.decode(UTF_8) + ".json")
-
-            with open(target_file, "wt+", encoding=UTF_8) as file:
-                json.dump(json_dict,
-                          file,
-                          indent="  ")
+        Unpacker.unpack_dbs_into_dirs({x_path_to_input_db: y_path_to_target_dir},
+                                      skip_input_checks=skip_input_checks,
+                                      skip_target_checks=skip_target_checks)
