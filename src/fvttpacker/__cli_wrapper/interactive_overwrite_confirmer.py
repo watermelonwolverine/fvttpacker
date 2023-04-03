@@ -4,10 +4,10 @@ from pathlib import Path
 from typing import List, Dict
 
 from fvttpacker.__cli_wrapper.__user_interactor import UserInteractor
-from fvttpacker.override_confirmer import OverrideConfirmer
+from fvttpacker.overwrite_confirmer import OverwriteConfirmer
 
 
-class InteractiveOverrideConfirmer(OverrideConfirmer):
+class InteractiveOverwriteConfirmer(OverwriteConfirmer):
 
     def __init__(self,
                  text_io_wrapper_out: TextIOWrapper = sys.stdout,
@@ -16,38 +16,38 @@ class InteractiveOverrideConfirmer(OverrideConfirmer):
         self.__user_interactor = UserInteractor(text_io_wrapper_out,
                                                 text_io_wrapper_in)
 
-    def confirm_override_leveldb(self,
-                                 path_to_target_db: Path) -> bool:
+    def confirm_overwrite_leveldb(self,
+                                  path_to_target_db: Path) -> bool:
 
         question = str(f"The LevelDB '{path_to_target_db}' already exists.\n'"
-                       f"Do you want to override it?\n")
+                       f"Do you want to overwrite it?\n")
 
         result = self.__user_interactor.ask_yes_or_no_question(question)
 
         if result:
-            self.__text_io_wrapper_out.write(f"Overriding '{path_to_target_db}'...\n")
+            self.__text_io_wrapper_out.write(f"Overwriting '{path_to_target_db}'...\n")
         else:
-            self.__text_io_wrapper_out.write(f"Not overriding '{path_to_target_db}'...\n")
+            self.__text_io_wrapper_out.write(f"Not overwriting '{path_to_target_db}'...\n")
 
         return result
 
-    def confirm_override_folder(self,
-                                path_to_target_dir: Path) -> bool:
+    def confirm_overwrite_folder(self,
+                                 path_to_target_dir: Path) -> bool:
 
         question = str(f"The folder '{path_to_target_dir}' already exists.\n'"
-                       f"Do you want to override it and its contents?\n")
+                       f"Do you want to overwrite it and its contents?\n")
 
         result = self.__user_interactor.ask_yes_or_no_question(question)
 
         if result:
-            self.__text_io_wrapper_out.write(f"Overriding '{path_to_target_dir}'.\n")
+            self.__text_io_wrapper_out.write(f"Overwriting '{path_to_target_dir}'.\n")
         else:
-            self.__text_io_wrapper_out.write(f"Not overriding '{path_to_target_dir}'.\n")
+            self.__text_io_wrapper_out.write(f"Not overwriting '{path_to_target_dir}'.\n")
 
         return result
 
-    def confirm_batch_override_leveldb(self,
-                                       paths_to_target_dbs: List[Path]) -> Dict[Path, bool]:
+    def confirm_batch_overwrite_leveldb(self,
+                                        paths_to_target_dbs: List[Path]) -> Dict[Path, bool]:
         # Build question
         question = "The following LevelDBs already exist:\n"
 
@@ -56,8 +56,8 @@ class InteractiveOverrideConfirmer(OverrideConfirmer):
             question += f"{n}: {target_db}\n"
             n += 1
 
-        question += "Press Enter if you want to override all," \
-                    " or enter the numbers of the entries you want to exclude from overriding:\n"
+        question += "Press Enter if you want to overwrite all," \
+                    " or enter the numbers of the entries you want to exclude from overwriting:\n"
 
         # Ask question
         numbers = self.__user_interactor.ask_for_comma_separated_list_of_integers(question)

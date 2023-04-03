@@ -6,30 +6,28 @@ import plyvel
 from plyvel import DB
 
 from fvttpacker.__common.assert_helper import AssertHelper
-from fvttpacker.__common.override_helper import OverrideHelper
+from fvttpacker.__common.overwrite_helper import OverwriteHelper
 from fvttpacker.__constants import world_db_names, UTF_8
 from fvttpacker.fvttpacker_exception import FvttPackerException
-from fvttpacker.override_confirmer import OverrideConfirmer, AllYesOverrideConfirmer
+from fvttpacker.overwrite_confirmer import OverwriteConfirmer, AllYesOverwriteConfirmer
 from fvttpacker.unpacker.dict_to_dir_writer import DictToDirWriter
 from fvttpacker.unpacker.leveldb_to_dict_reader import LevelDBToDictReader
 
 
 class Unpacker:
 
-    def __init__(self,
-                 override_confirmer: OverrideConfirmer = AllYesOverrideConfirmer()):
-
-        self.override_confirmer = override_confirmer
-
-    def unpack_world_dbs_under_x_into_dirs_under_y(self,
-                                                   x_path_to_parent_input_dir: Path,
-                                                   y_path_to_parent_target_dir: Path) -> None:
+    @staticmethod
+    def unpack_world_dbs_under_x_into_dirs_under_y(
+            x_path_to_parent_input_dir: Path,
+            y_path_to_parent_target_dir: Path,
+            overwrite_confirmer: OverwriteConfirmer = AllYesOverwriteConfirmer()) -> None:
         """
         Similar to `unpack_dbs_under_x_into_dirs_under_y`, but only unpacks the LevelDBs under the given directory
         (`x_path_to_parent_input_dir`) that belong to a world and ignores the rest.
 
         :param x_path_to_parent_input_dir: e.g. "./foundrydata/Data/worlds/test/data"
         :param y_path_to_parent_target_dir: e.g. "./unpack_result"
+        :param overwrite_confirmer: TODO
         """
 
         AssertHelper.assert_path_to_parent_input_dir_is_ok(x_path_to_parent_input_dir)
@@ -46,16 +44,25 @@ class Unpacker:
 
             input_db_paths_to_target_dir_paths[path_to_input_db] = path_to_target_dir
 
-        self.unpack_dbs_into_dirs(input_db_paths_to_target_dir_paths)
+        # ask which existing dirs should be overwritten and filter out the dirs that should not be
+        input_db_paths_to_target_dir_paths = OverwriteHelper.ask_and_filter_out_non_overwrite(
+            input_db_paths_to_target_dir_paths,
+            overwrite_confirmer.confirm_batch_overwrite_dirs)
 
-    def unpack_dbs_under_x_into_dirs_under_y(self,
-                                             x_path_to_parent_input_dir: Path,
-                                             y_path_to_parent_target_dir: Path) -> None:
+        Unpacker.unpack_dbs_into_dirs(input_db_paths_to_target_dir_paths)
+
+    @staticmethod
+    def unpack_dbs_under_x_into_dirs_under_y(
+            x_path_to_parent_input_dir: Path,
+            y_path_to_parent_target_dir: Path,
+            overwrite_confirmer: OverwriteConfirmer = AllYesOverwriteConfirmer()) -> None:
         """
         Unpacks all LevelDBs in the given directory (`x_path_to_parent_input_dir`) into sub-folders of the given target
         directory (`y_path_to_parent_target_dir').
+
         :param x_path_to_parent_input_dir: e.g. "./foundrydata/Data/modules/shared-module/packs"
         :param y_path_to_parent_target_dir: e.g. "unpack_result"
+        :param overwrite_confirmer: TODO
         """
 
         AssertHelper.assert_path_to_parent_input_dir_is_ok(x_path_to_parent_input_dir)
@@ -72,12 +79,18 @@ class Unpacker:
 
             input_db_paths_to_target_dir_paths[path_to_input_db] = path_to_target_dir
 
-        self.unpack_dbs_into_dirs(input_db_paths_to_target_dir_paths)
+        # ask which existing dirs should be overwritten and filter out the dirs that should not be
+        input_db_paths_to_target_dir_paths = OverwriteHelper.ask_and_filter_out_non_overwrite(
+            input_db_paths_to_target_dir_paths,
+            overwrite_confirmer.confirm_batch_overwrite_dirs)
 
-    def unpack_dbs_into_dirs(self,
-                             input_db_paths_to_target_dir_paths: Dict[Path, Path],
-                             skip_input_checks=False,
-                             skip_target_checks=False):
+        Unpacker.unpack_dbs_into_dirs(input_db_paths_to_target_dir_paths)
+
+    @staticmethod
+    def unpack_dbs_into_dirs(
+            input_db_paths_to_target_dir_paths: Dict[Path, Path],
+            skip_input_checks=False,
+            skip_target_checks=False):
         """
         Unpacks all the given LevelDB at the given Paths (keys).
         Each into its respective directory at the given Path (values).
@@ -99,11 +112,6 @@ class Unpacker:
         if not skip_target_checks:
             AssertHelper.assert_paths_to_target_dirs_are_ok(input_db_paths_to_target_dir_paths.values())
 
-        # ask which existing dirs should be overriden and filter out the dirs that should not be overriden
-        input_db_paths_to_target_dir_paths = OverrideHelper.ask_and_filter_out_non_override(
-            input_db_paths_to_target_dir_paths,
-            self.override_confirmer.confirm_batch_override_dirs)
-
         # read all input dbs -> fail fast
         input_db_paths_to_dicts: Dict[Path, Dict[str, str]] = LevelDBToDictReader.read_dbs_as_dicts(
             input_db_paths_to_target_dir_paths.keys())
@@ -116,8 +124,8 @@ class Unpacker:
                                                 path_to_target_dir,
                                                 skip_checks=True)
 
-    def unpack_db(self,
-                  path_to_db: Path,
+    @staticmethod
+    def unpack_db(path_to_db: Path,
                   target_dir: Path) -> None:
         """
         Unpacks the leveldb at the given `path_to_db` into a new folder under the given `output_dir`
@@ -132,8 +140,8 @@ class Unpacker:
 
         db = plyvel.DB(str(path_to_db))
 
-        self.unpack_db_into_folder(db,
-                                   target_dir)
+        Unpacker.unpack_db_into_folder(db,
+                                       target_dir)
 
         db.close()
 

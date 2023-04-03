@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from fvttpacker.unpacker import Unpacker
+from fvttpacker.__cli_wrapper.interactive_overwrite_confirmer import InteractiveOverwriteConfirmer
+from fvttpacker.unpacker.unpacker import Unpacker
 
 path_to_world = Path("leveldb_files")
 output_dir = Path("unpack_results")
 
-unpacker = Unpacker()
-
-unpacker.unpack_world_dbs_under_x_into_dirs_under_y(path_to_world,
-                                                    output_dir)
+Unpacker.unpack_world_dbs_under_x_into_dirs_under_y(path_to_world,
+                                                    output_dir,
+                                                    overwrite_confirmer=InteractiveOverwriteConfirmer())
