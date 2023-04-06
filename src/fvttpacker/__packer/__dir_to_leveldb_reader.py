@@ -11,7 +11,6 @@ from fvttpacker.fvttpacker_exception import FvttPackerException
 
 class DirToDictReader:
 
-
     @staticmethod
     def read_dirs_as_dicts(paths_to_input_dirs: Iterable[Path]) -> Dict[Path, Dict[str, str]]:
 
@@ -22,7 +21,6 @@ class DirToDictReader:
                                                                          skip_checks=True)
 
         return result
-
 
     @staticmethod
     def read_dir_as_dict(path_to_input_dir: Path,

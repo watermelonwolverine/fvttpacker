@@ -1,8 +1,8 @@
 import logging
 from pathlib import Path
 
-from fvttpacker.__cli_wrapper.interactive_overwrite_confirmer import InteractiveOverwriteConfirmer
-from fvttpacker.packer.packer import Packer
+from fvttpacker.__cli_wrapper.__interactive_overwrite_confirmer import InteractiveOverwriteConfirmer
+from fvttpacker.__packer.packer import Packer
 
 target_dir = Path("leveldb_files")
 input_dir = Path("unpack_results")

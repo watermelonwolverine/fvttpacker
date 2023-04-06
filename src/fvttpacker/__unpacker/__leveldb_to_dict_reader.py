@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 from typing import Iterable, Dict, Union
@@ -12,8 +13,8 @@ from fvttpacker.__constants import UTF_8
 class LevelDBToDictReader:
 
     @staticmethod
-    def read_dbs_as_dicts(paths_to_input_dbs: Iterable[Path]) -> Dict[Path, Dict[str, str]]:
-        result: Dict[Path, Dict[str, str]] = dict()
+    def read_dbs_as_dicts(paths_to_input_dbs: Iterable[Path]) -> Dict[Path, Dict[str, Dict]]:
+        result: Dict[Path, Dict[str, Dict]] = dict()
 
         for path_to_input_db in paths_to_input_dbs:
             result[path_to_input_db] = LevelDBToDictReader.read_db_at_x_into_dict(path_to_input_db,
@@ -23,7 +24,7 @@ class LevelDBToDictReader:
 
     @staticmethod
     def read_db_at_x_into_dict(path_to_input_db: Path,
-                               skip_checks: bool) -> Dict[str, str]:
+                               skip_checks: bool) -> Dict[str, Dict]:
         """
         Reads the given LevelDB (`path_to_db`) into memory.
 
@@ -51,9 +52,9 @@ class LevelDBToDictReader:
                 db.close()
 
     @staticmethod
-    def read_db_into_dict(db: plyvel.DB) -> Dict[str, str]:
+    def read_db_into_dict(db: plyvel.DB) -> Dict[str, Dict]:
 
-        result: Dict[str, str] = dict()
+        result: Dict[str, Dict] = dict()
 
         for entry in db.iterator():
             key: bytes = entry[0]
@@ -62,6 +63,6 @@ class LevelDBToDictReader:
             key_str = key.decode(UTF_8)
             value_str = value.decode(UTF_8)
 
-            result[key_str] = value_str
+            result[key_str] = json.loads(value_str)
 
         return result

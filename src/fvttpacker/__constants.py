@@ -2,8 +2,8 @@ UTF_8 = "UTF-8"
 
 app_name = "fvttpacker"
 author = "watermelonwolverine"
-url = "https://github.com/%s/%s" % (author, app_name)
-issues_url = "%s/issues" % url
+url = f"https://github.com/{author}/{app_name}"
+issues_url = f"{url}/issues"
 
 world_db_names = ["actors",
                   "cards",

@@ -50,8 +50,8 @@ class UserInteractor:
         except KeyboardInterrupt:
             raise FvttPackerException("KeyboardInterrupt")
 
-    def __split_into_integer(self,
-                             input_str: str) -> Union[None, List[int]]:
+    @staticmethod
+    def __split_into_integer(input_str: str) -> Union[None, List[int]]:
 
         splits: List[str] = input_str.split(",")
         result: List[int] = list()

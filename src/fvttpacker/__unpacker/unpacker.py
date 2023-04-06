@@ -4,10 +4,10 @@ from typing import Dict
 from fvttpacker.__common.assert_helper import AssertHelper
 from fvttpacker.__common.overwrite_helper import OverwriteHelper
 from fvttpacker.__constants import world_db_names
+from fvttpacker.__unpacker.__dict_to_dir_writer import DictToDirWriter
+from fvttpacker.__unpacker.__leveldb_to_dict_reader import LevelDBToDictReader
 from fvttpacker.fvttpacker_exception import FvttPackerException
 from fvttpacker.overwrite_confirmer import OverwriteConfirmer, AllYesOverwriteConfirmer
-from fvttpacker.unpacker.dict_to_dir_writer import DictToDirWriter
-from fvttpacker.unpacker.leveldb_to_dict_reader import LevelDBToDictReader
 
 
 class Unpacker:
@@ -109,7 +109,7 @@ class Unpacker:
             AssertHelper.assert_paths_to_target_dirs_are_ok(input_db_paths_to_target_dir_paths.values())
 
         # read all input dbs -> fail fast
-        input_db_paths_to_dicts: Dict[Path, Dict[str, str]] = LevelDBToDictReader.read_dbs_as_dicts(
+        input_db_paths_to_dicts: Dict[Path, Dict[str, Dict]] = LevelDBToDictReader.read_dbs_as_dicts(
             input_db_paths_to_target_dir_paths.keys())
 
         # coming this far means:

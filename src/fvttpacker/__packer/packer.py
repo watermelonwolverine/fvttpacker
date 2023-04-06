@@ -9,8 +9,8 @@ from fvttpacker.__common.overwrite_helper import OverwriteHelper
 from fvttpacker.__constants import world_db_names
 from fvttpacker.fvttpacker_exception import FvttPackerException
 from fvttpacker.overwrite_confirmer import OverwriteConfirmer, AllYesOverwriteConfirmer
-from fvttpacker.packer.dict_to_leveldb_writer import DictToLevelDBWriter
-from fvttpacker.packer.dir_to_leveldb_reader import DirToDictReader
+from fvttpacker.__packer.__dict_to_leveldb_writer import DictToLevelDBWriter
+from fvttpacker.__packer.__dir_to_leveldb_reader import DirToDictReader
 
 
 class Packer:

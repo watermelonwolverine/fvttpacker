@@ -16,8 +16,10 @@ class LevelDBHelper:
         """
         Tries to open the LevelDB at the given path (`path_to_db`)
 
+
         :param path_to_db: Path to the LevelDB to open.
-        :param skip_checks:
+        :param skip_checks: TODO
+        :param must_exist: TODO
 
         :return: The handle to the db.
         """

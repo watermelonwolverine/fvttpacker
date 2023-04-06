@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 from typing import Dict
@@ -9,17 +10,18 @@ from fvttpacker.__constants import UTF_8
 class DictToDirWriter:
 
     @staticmethod
-    def write_dict_into_dir(input_dict: Dict[str, str],
+    def write_dict_into_dir(input_dict: Dict[str, Dict],
                             path_to_target_dir: Path,
                             skip_checks: bool):
         """
         Packs the given dictionary (`input_dict`) into the given directory (`path_to_target_dict`).
-        - Removes all entries from `to_db` that are not in `from_dict`
-        - Adds missing entries to `to_db`
-        - Updates entries in `to_db` if necessary
+        - Removes all entries from `path_to_target_dir` that are not in `from_dict`
+        - Adds missing entries to `path_to_target_dir`
+        - Updates entries in `path_to_target_dir` if necessary
 
         :param input_dict: The dict to unpack into the directory
         :param path_to_target_dir: The path to the directory to unpack the dict into
+        :param skip_checks: TODO
         """
 
         if not skip_checks:
@@ -40,25 +42,27 @@ class DictToDirWriter:
                 file_in_target_dir.unlink()
                 logging.info("Deleted file '%s'", file_in_target_dir)
 
-        filename: str
-        file_content: str
+        target_filename: str
+        target_content_dict: Dict
 
-        for (filename, file_content) in input_dict.items():
+        for (target_filename, target_content_dict) in input_dict.items():
 
-            path_to_file = path_to_target_dir.joinpath(filename)
+            path_to_file = path_to_target_dir.joinpath(target_filename)
 
             if not path_to_file.exists():
                 path_to_file.touch()
 
-            current_file_content: str
+            current_content_str: str
 
             # TODO: catch exception that could happen here
             with open(path_to_file, "rt", encoding=UTF_8) as file:
-                current_file_content = file.read()
+                current_content_str = file.read()
 
-            if file_content == current_file_content:
+            target_content_str = json.dumps(target_content_dict, indent="  ")
+
+            if target_content_str == current_content_str:
                 continue
 
             with open(path_to_file, "wt", encoding=UTF_8) as file:
-                file.write(file_content)
-                logging.info("Updated file '%s'", filename)
+                file.write(target_content_str)
+                logging.info("Updated file '%s'", target_filename)

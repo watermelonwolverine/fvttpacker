@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from fvttpacker.__cli_wrapper.interactive_overwrite_confirmer import InteractiveOverwriteConfirmer
-from fvttpacker.unpacker.unpacker import Unpacker
+from fvttpacker.__cli_wrapper.__interactive_overwrite_confirmer import InteractiveOverwriteConfirmer
+from fvttpacker.__unpacker.unpacker import Unpacker
 
 path_to_world = Path("leveldb_files")
 output_dir = Path("unpack_results")
