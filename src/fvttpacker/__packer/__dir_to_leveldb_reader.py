@@ -17,8 +17,14 @@ class DirToDictReader:
         result: Dict[Path, Dict[str, str]] = dict()
 
         for path_to_input_dir in paths_to_input_dirs:
-            result[path_to_input_dir] = DirToDictReader.read_dir_as_dict(path_to_input_dir,
-                                                                         skip_checks=True)
+            dir_dict = DirToDictReader.read_dir_as_dict(path_to_input_dir,
+                                                        skip_checks=True)
+
+            result[path_to_input_dir] = dir_dict
+
+            logging.debug("Read directory '%s' into dict '%s'",
+                          path_to_input_dir,
+                          hex(id(dir_dict)))
 
         return result
 
@@ -41,7 +47,7 @@ class DirToDictReader:
         if not skip_checks:
             AssertHelper.assert_path_to_input_dir_is_ok(path_to_input_dir)
 
-        result = dict()
+        result: Dict[str, str] = dict()
 
         for path_to_file in path_to_input_dir.glob("*.json"):
 
@@ -56,6 +62,6 @@ class DirToDictReader:
             # remove .json at the end
             key: str = path_to_file.name[0:-5]
 
-            result[key] = json.dumps(json_dict)
+            result[key] = json.dumps(json_dict, separators=(",", ":"), indent=None)
 
         return result

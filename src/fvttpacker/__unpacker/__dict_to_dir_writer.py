@@ -47,7 +47,7 @@ class DictToDirWriter:
 
         for (target_filename, target_content_dict) in input_dict.items():
 
-            path_to_file = path_to_target_dir.joinpath(target_filename)
+            path_to_file = path_to_target_dir.joinpath(target_filename + ".json")
 
             if not path_to_file.exists():
                 path_to_file.touch()

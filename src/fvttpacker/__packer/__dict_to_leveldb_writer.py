@@ -10,7 +10,7 @@ class DictToLevelDBWriter:
 
     @staticmethod
     def write_dict_into_db(input_dict: Dict[str, str],
-                           target_db: plyvel.DB) -> None:
+                           target_db: plyvel.DB) -> int:
 
         """
         Packs the given dictionary (`input_dict`) into the given LevelDB (`target_db`).
@@ -20,6 +20,7 @@ class DictToLevelDBWriter:
 
         :param input_dict: The dict to pack into the LevelDB
         :param target_db: The handle of the LevelDB to pack the dict into
+        :return: Number of changed entries
         """
 
         logging.info("Packing dict '%s' into LevelDB '%s'",
@@ -43,6 +44,8 @@ class DictToLevelDBWriter:
 
         key_str: str
         value_str: str
+        nb_changes: int = 0
+
         for (key_str, value_str) in input_dict.items():
 
             key_bytes: bytes = key_str.encode(UTF_8)
@@ -54,7 +57,14 @@ class DictToLevelDBWriter:
 
             if should_put:
                 wb.put(key_bytes, input_dict[key_str].encode(UTF_8))
+                nb_changes += 1
                 logging.info("Updated key '%s'", key_str)
 
         wb.write()
         logging.debug("Executing batch")
+
+        logging.info("Number of changes in db '%s': %s",
+                     hex(id(target_db)),
+                     nb_changes)
+
+        return nb_changes

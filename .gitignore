@@ -2,6 +2,8 @@
 __pycache__
 /test/unpack_results
 /test/leveldb_files
+/test/leveldb_files_bkp
 /test/pack_results
 /build
 /dist
+

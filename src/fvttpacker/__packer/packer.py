@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Dict
 
@@ -7,10 +8,10 @@ from fvttpacker.__common.assert_helper import AssertHelper
 from fvttpacker.__common.leveldb_helper import LevelDBHelper
 from fvttpacker.__common.overwrite_helper import OverwriteHelper
 from fvttpacker.__constants import world_db_names
-from fvttpacker.fvttpacker_exception import FvttPackerException
-from fvttpacker.overwrite_confirmer import OverwriteConfirmer, AllYesOverwriteConfirmer
 from fvttpacker.__packer.__dict_to_leveldb_writer import DictToLevelDBWriter
 from fvttpacker.__packer.__dir_to_leveldb_reader import DirToDictReader
+from fvttpacker.fvttpacker_exception import FvttPackerException
+from fvttpacker.overwrite_confirmer import OverwriteConfirmer, AllYesOverwriteConfirmer
 
 
 class Packer:
@@ -118,25 +119,33 @@ class Packer:
         # read all input directories -> fail fast
         input_dir_paths_to_dicts = DirToDictReader.read_dirs_as_dicts(input_dir_paths_to_target_db_paths.keys())
 
-        # open all the dbs -> fail fast
         input_dir_paths_to_dbs: Dict[Path, DB] = dict()
-        for (path_to_input_dir, path_to_target_db) in input_dir_paths_to_target_db_paths.items():
-            input_dir_paths_to_dbs[path_to_input_dir] = LevelDBHelper.try_open_db(path_to_target_db,
-                                                                                  skip_checks=True,
-                                                                                  must_exist=False)
 
-        # coming this far means:
-        # - all input directories were successfully read into dicts
-        # - all target dbs were successfully opened as LevelDBs
+        nb_changes: int = 0
+
         try:
+            # open all the dbs -> fail fast
+            for (path_to_input_dir, path_to_target_db) in input_dir_paths_to_target_db_paths.items():
+                db = LevelDBHelper.try_open_db(path_to_target_db, skip_checks=True,
+                                               must_exist=False)
+                input_dir_paths_to_dbs[path_to_input_dir] = db
+                logging.debug("Opened LevelDB at '%s' as '%s'",
+                              path_to_target_db,
+                              hex(id(db)))
+            # coming this far means:
+            # - all input directories were successfully read into dicts
+            # - all target dbs were successfully opened as LevelDBs
+
             # pack all the folders into
             for (path_to_input_dir, target_db) in input_dir_paths_to_dbs.items():
-                DictToLevelDBWriter.write_dict_into_db(input_dir_paths_to_dicts[path_to_input_dir],
-                                                       target_db)
+                nb_changes += DictToLevelDBWriter.write_dict_into_db(input_dir_paths_to_dicts[path_to_input_dir],
+                                                                     target_db)
         finally:
             # close all the dbs
             for target_db in input_dir_paths_to_dbs.values():
                 target_db.close()
+
+        logging.info("Total number of changes: %s", nb_changes)
 
     @staticmethod
     def pack_dir_into_db_at(
