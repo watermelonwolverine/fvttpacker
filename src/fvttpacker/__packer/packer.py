@@ -75,7 +75,7 @@ class Packer:
 
         for db_name in x_path_to_parent_input_dir.glob("*/"):
             # Remove trailing /
-            db_name = db_name[:-1]
+            db_name = db_name.name
 
             path_to_input_dir = x_path_to_parent_input_dir.joinpath(db_name)
 

@@ -51,8 +51,9 @@ class Unpacker:
         db_names: List[str] = list()
 
         for db_name in x_path_to_parent_input_dir.glob("*/"):
+            db_name = db_name.name
             # remove trailing /
-            db_names.append(db_name[:-1])
+            db_names.append(db_name)
 
         Unpacker.unpack_given_dbs_under_x_into_dirs_under_y(x_path_to_parent_input_dir,
                                                             y_path_to_parent_target_dir,
