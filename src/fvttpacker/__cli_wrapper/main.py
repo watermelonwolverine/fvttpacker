@@ -93,7 +93,7 @@ def pack_all(context: dict,
 @click.argument('target_dir', type=click.Path(exists=True))
 def pack(source_dir: Path,
          target_dir: Path) -> None:
-    Packer.pack_dir_into_db_at(
+    Packer.pack_dir_at_x_into_db_at_y(
         source_dir,
         target_dir
     )

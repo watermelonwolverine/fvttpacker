@@ -1,10 +1,11 @@
 import logging
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Iterable
 
 from plyvel import DB
 
-from fvttpacker.__common.assert_helper import AssertHelper
+from fvttpacker.__common.__directory_checker_decorators import check_input_dir_and_target_dir, \
+    check_input_dbs_and_target_dirs, check_input_dirs_and_target_dbs
 from fvttpacker.__common.leveldb_helper import LevelDBHelper
 from fvttpacker.__common.overwrite_helper import OverwriteHelper
 from fvttpacker.__constants import world_db_names
@@ -17,6 +18,7 @@ from fvttpacker.overwrite_confirmer import OverwriteConfirmer, AllYesOverwriteCo
 class Packer:
 
     @staticmethod
+    @check_input_dir_and_target_dir
     def pack_world_dirs_under_x_into_dbs_under_y(
             x_path_to_parent_input_dir: Path,
             y_path_to_parent_target_dir: Path,
@@ -31,30 +33,14 @@ class Packer:
         :param overwrite_confirmer: TODO
         """
 
-        AssertHelper.assert_path_to_parent_target_dir_is_ok(y_path_to_parent_target_dir)
-        AssertHelper.assert_path_to_parent_input_dir_is_ok(x_path_to_parent_input_dir)
-
-        input_dir_paths_to_target_db_paths: Dict[Path, Path] = dict()
-
-        for db_name in world_db_names:
-            path_to_input_dir = x_path_to_parent_input_dir.joinpath(db_name)
-
-            if not path_to_input_dir.is_dir():
-                raise FvttPackerException(f"Missing world data directory {db_name} under {path_to_input_dir}.")
-
-            path_to_target_db = y_path_to_parent_target_dir.joinpath(db_name)
-
-            input_dir_paths_to_target_db_paths[path_to_input_dir] = path_to_target_db
-
-        # ask which existing dbs should be overwritten and filter out the dbs that should not be
-        input_dir_paths_to_target_db_paths = OverwriteHelper.ask_and_filter_out_non_overwrite(
-            input_dir_paths_to_target_db_paths,
-            overwrite_confirmer.confirm_batch_overwrite_leveldb)
-
-        Packer.pack_dirs_into_dbs(input_dir_paths_to_target_db_paths,
-                                  skip_input_checks=True)
+        Packer.pack_given_dirs_under_x_into_dbs_under_y(
+            x_path_to_parent_input_dir,
+            y_path_to_parent_target_dir,
+            world_db_names,
+            overwrite_confirmer)
 
     @staticmethod
+    @check_input_dir_and_target_dir
     def pack_dirs_under_x_into_dbs_under_y(
             x_path_to_parent_input_dir: Path,
             y_path_to_parent_target_dir: Path,
@@ -68,16 +54,34 @@ class Packer:
         :param overwrite_confirmer: TODO
         """
 
-        AssertHelper.assert_path_to_parent_target_dir_is_ok(y_path_to_parent_target_dir)
-        AssertHelper.assert_path_to_parent_input_dir_is_ok(x_path_to_parent_input_dir)
-
-        input_dir_paths_to_target_db_paths: Dict[Path, Path] = dict()
+        db_names: List[str] = list()
 
         for db_name in x_path_to_parent_input_dir.glob("*/"):
-            # Remove trailing /
-            db_name = db_name.name
+            db_names.append(db_name.name)
 
+        Packer.pack_given_dirs_under_x_into_dbs_under_y(
+            x_path_to_parent_input_dir,
+            y_path_to_parent_target_dir,
+            db_names,
+            overwrite_confirmer)
+
+    @staticmethod
+    @check_input_dir_and_target_dir
+    def pack_given_dirs_under_x_into_dbs_under_y(
+            x_path_to_parent_input_dir: Path,
+            y_path_to_parent_target_dir: Path,
+            db_names: Iterable[str],
+            overwrite_confirmer: OverwriteConfirmer = AllYesOverwriteConfirmer()) -> None:
+
+        # mapping input dirs to target dbs
+        input_dir_paths_to_target_db_paths: Dict[Path, Path] = dict()
+
+        for db_name in db_names:
             path_to_input_dir = x_path_to_parent_input_dir.joinpath(db_name)
+
+            # all input paths must exist and be dirs
+            if not path_to_input_dir.is_dir():
+                raise FvttPackerException(f"Missing directory '{db_name}' under '{path_to_input_dir}'.")
 
             path_to_target_db = y_path_to_parent_target_dir.joinpath(db_name)
 
@@ -92,29 +96,18 @@ class Packer:
                                   skip_input_checks=True)
 
     @staticmethod
+    @check_input_dirs_and_target_dbs
     def pack_dirs_into_dbs(
-            input_dir_paths_to_target_db_paths: Dict[Path, Path],
-            skip_input_checks=False,
-            skip_target_checks=False) -> None:
+            input_dir_paths_to_target_db_paths: Dict[Path, Path]) -> None:
         """
         Packs all the given directories (keys). Each into its respective LevelDB at the given path (values).
 
         :param input_dir_paths_to_target_db_paths: Contains the paths to the input directories as keys
         and the paths to the target LevelDBs as values
-        :param skip_input_checks:
-        :param skip_target_checks:
         """
 
         path_to_input_dir: Path
         path_to_target_db: Path
-
-        # check input dir paths
-        if not skip_input_checks:
-            AssertHelper.assert_paths_to_input_dirs_are_ok(input_dir_paths_to_target_db_paths.keys())
-
-        # check target db paths
-        if not skip_target_checks:
-            AssertHelper.assert_paths_to_target_dbs_are_ok(input_dir_paths_to_target_db_paths.values())
 
         # read all input directories -> fail fast
         input_dir_paths_to_dicts = DirToDictReader.read_dirs_as_dicts(input_dir_paths_to_target_db_paths.keys())
@@ -148,11 +141,9 @@ class Packer:
         logging.info("Total number of changes: %s", nb_changes)
 
     @staticmethod
-    def pack_dir_into_db_at(
-            path_to_input_dir: Path,
-            path_to_target_db: Path,
-            skip_input_checks=False,
-            skip_target_checks=False) -> None:
+    def pack_dir_at_x_into_db_at_y(
+            x_path_to_input_dir: Path,
+            y_path_to_target_db: Path) -> None:
         """
         Packs the given directory (`path_to_input_dir`) into the leveldb at the given location (`path_to_target_db`).
         If the `path_to_target_db` does not point to an existing LevelDB a new one will be created.
@@ -161,12 +152,8 @@ class Packer:
         The file content will be the json string without indentations also encoded as UTF-8.
 
 
-        :param path_to_input_dir: e.g. "./unpacked_dbs/actors"
-        :param path_to_target_db: e.g. "./foundrydata/Data/worlds/test/data/actors"
-        :param skip_input_checks: TODO
-        :param skip_target_checks: TODO
+        :param x_path_to_input_dir: e.g. "./unpacked_dbs/actors"
+        :param y_path_to_target_db: e.g. "./foundrydata/Data/worlds/test/data/actors"
         """
 
-        Packer.pack_dirs_into_dbs({path_to_input_dir: path_to_target_db},
-                                  skip_input_checks=skip_input_checks,
-                                  skip_target_checks=skip_target_checks)
+        Packer.pack_dirs_into_dbs({x_path_to_input_dir: y_path_to_target_db})

@@ -1,12 +1,12 @@
 from pathlib import Path
 from typing import Dict, Iterable, List
 
-from fvttpacker.__common.assert_helper import AssertHelper
 from fvttpacker.__common.overwrite_helper import OverwriteHelper
 from fvttpacker.__constants import world_db_names
 from fvttpacker.__unpacker.__dict_to_dir_writer import DictToDirWriter
 from fvttpacker.__unpacker.__leveldb_to_dict_reader import LevelDBToDictReader
-from fvttpacker.__unpacker.__unpacker_decorator import check_input_dir_and_target_dir, check_input_dirs_and_target_dirs
+from fvttpacker.__common.__directory_checker_decorators import check_input_dir_and_target_dir, \
+    check_input_dbs_and_target_dirs
 from fvttpacker.fvttpacker_exception import FvttPackerException
 from fvttpacker.overwrite_confirmer import OverwriteConfirmer, AllYesOverwriteConfirmer
 
@@ -78,7 +78,7 @@ class Unpacker:
 
             # input dbs must all be directories
             if not path_to_input_db.is_dir():
-                raise FvttPackerException(f"Missing LevelDB {db_name} under {x_path_to_parent_input_dir}.")
+                raise FvttPackerException(f"Missing LevelDB '{db_name}' under '{x_path_to_parent_input_dir}'.")
 
             input_db_paths_to_target_dir_paths[path_to_input_db] = path_to_target_dir
 
@@ -93,7 +93,7 @@ class Unpacker:
         Unpacker.unpack_dbs_into_dirs(input_db_paths_to_target_dir_paths)
 
     @staticmethod
-    @check_input_dirs_and_target_dirs
+    @check_input_dbs_and_target_dirs
     def unpack_dbs_into_dirs(
             input_db_paths_to_target_dir_paths: Dict[Path, Path]):
         """
@@ -118,19 +118,13 @@ class Unpacker:
 
     @staticmethod
     def unpack_db_at_x_into_dir_at_y(x_path_to_input_db: Path,
-                                     y_path_to_target_dir: Path,
-                                     skip_input_checks: bool,
-                                     skip_target_checks: bool) -> None:
+                                     y_path_to_target_dir: Path) -> None:
         """
         Unpacks the leveldb at the LevelDB at the given Path (`x_path_to_input_db`) into the directory at the given
         target Path (`y_path_to_target_dir`).
 
         :param x_path_to_input_db: e.g. "./foundrydata/Data/worlds/test/data/actors"
         :param y_path_to_target_dir: e.g. "./unpack_result/actors"
-        :param skip_input_checks: TODO
-        :param skip_target_checks: TODO
         """
 
-        Unpacker.unpack_dbs_into_dirs({x_path_to_input_db: y_path_to_target_dir},
-                                      skip_input_checks=skip_input_checks,
-                                      skip_target_checks=skip_target_checks)
+        Unpacker.unpack_dbs_into_dirs({x_path_to_input_db: y_path_to_target_dir})

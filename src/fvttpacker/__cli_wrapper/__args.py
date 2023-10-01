@@ -1,6 +1,6 @@
 verbosity_option = "--verbosity"
+no_interaction_option = "--no-interaction"
 
-verbosity_off = "off"
 verbosity_debug = "debug"
 verbosity_info = "info"
 verbosity_warning = "warning"
@@ -12,6 +12,5 @@ verbosity_choices = [
     verbosity_info,
     verbosity_warning,
     verbosity_error,
-    verbosity_critical,
-    verbosity_off,
+    verbosity_critical
 ]

@@ -20,13 +20,23 @@ def check_input_dir_and_target_dir(func):
     return wrapper
 
 
-def check_input_dirs_and_target_dirs(func):
+def check_input_dbs_and_target_dirs(func):
     def wrapper(input_db_paths_to_target_dir_paths: Dict[Path, Path]):
-
         AssertHelper.assert_paths_to_input_dbs_are_ok(input_db_paths_to_target_dir_paths.keys())
 
         AssertHelper.assert_paths_to_target_dirs_are_ok(input_db_paths_to_target_dir_paths.values())
 
         func(input_db_paths_to_target_dir_paths)
+
+    return wrapper
+
+
+def check_input_dirs_and_target_dbs(func):
+    def wrapper(input_dir_paths_to_target_db_paths: Dict[Path, Path]):
+        AssertHelper.assert_paths_to_input_dirs_are_ok(input_dir_paths_to_target_db_paths.keys())
+
+        AssertHelper.assert_paths_to_target_dbs_are_ok(input_dir_paths_to_target_db_paths.values())
+
+        func(input_dir_paths_to_target_db_paths)
 
     return wrapper
