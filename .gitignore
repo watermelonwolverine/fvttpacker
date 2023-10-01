@@ -6,4 +6,4 @@ __pycache__/
 /test/pack_results/
 /build/
 /dist/
-
+/**/fvttpacker.egg-info/
