@@ -92,8 +92,7 @@ class Packer:
             input_dir_paths_to_target_db_paths,
             overwrite_confirmer.confirm_batch_overwrite_leveldb)
 
-        Packer.pack_dirs_into_dbs(input_dir_paths_to_target_db_paths,
-                                  skip_input_checks=True)
+        Packer.pack_dirs_into_dbs(input_dir_paths_to_target_db_paths)
 
     @staticmethod
     @check_input_dirs_and_target_dbs

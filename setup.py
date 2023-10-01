@@ -5,12 +5,11 @@ from glob import glob
 
 import setuptools
 
-from fvttpacker import __version__
-from fvttpacker.__constants import app_name, author, url, issues_url
+from fvttpacker.__constants import app_name, author, url, issues_url, version
 
 setuptools.setup(
     name=app_name,
-    version=__version__,
+    version=version,
     author=author,
     author_email="29666253+watermelonwolverine@users.noreply.github.com",
     description="Packs and unpacks FoundryVTT databases",
