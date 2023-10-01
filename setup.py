@@ -27,7 +27,7 @@ setuptools.setup(
     python_requires=">=3.8",
     py_modules=[os.path.splitext(os.path.basename(path))[0] for path in glob('src/*.py')],
     entry_points={
-        'console_scripts': [f'{app_name} = fvttpacker.__cli_wrapper.main:cli'],
+        'console_scripts': [f'{app_name} = fvttpacker.__cli_wrapper.main:main'],
     },
     install_requires=["appdirs", "click", "plyvel"]
 )
