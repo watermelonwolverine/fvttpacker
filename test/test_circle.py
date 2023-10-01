@@ -6,7 +6,7 @@ from typing import List
 
 from plyvel import DB
 
-from fvttpacker import Packer
+from fvttpacker.__packer.packer import Packer
 from fvttpacker.__common.leveldb_helper import LevelDBHelper
 from fvttpacker.__unpacker.unpacker import Unpacker
 
